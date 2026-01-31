@@ -11,3 +11,35 @@ code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+main {
+  min-height: 90vh;
+}
+#navbarScrollingDropdown::before {
+  content: "\f007";
+  font-family: "Font Awesome 5 Free";
+  font-weight: 900;
+  padding-right: 8px;
+}
+
+/* Horizontal on small screens, vertical on large screens */
+.list-group-vertical {
+  flex-direction: row !important;
+}
+
+.list-group-vertical .list-group-item {
+  flex: 1;
+  border-right-width: 1px !important;
+  border-bottom-width: 0 !important;
+}
+
+@media (min-width: 992px) {
+  .list-group-vertical {
+    flex-direction: column !important;
+  }
+  
+  .list-group-vertical .list-group-item {
+    width: 100% !important;
+    border-right-width: 0 !important;
+    border-bottom-width: 1px !important;
+  }
+}

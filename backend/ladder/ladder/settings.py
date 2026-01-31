@@ -91,7 +91,7 @@ SIMPLE_JWT = {
     "JTI_CLAIM": "jti",
 
     "SLIDING_TOKEN_REFRESH_EXP_CLAIM": "refresh_exp",
-    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=30 ),
+    "SLIDING_TOKEN_LIFETIME": timedelta(minutes=300 ),
     "SLIDING_TOKEN_REFRESH_LIFETIME": timedelta(days=1),
 
     "TOKEN_OBTAIN_SERIALIZER": "rest_framework_simplejwt.serializers.TokenObtainPairSerializer",
@@ -203,10 +203,10 @@ USE_TZ = True
 STATIC_URL = "/static/"
 MEDIA_URL = "/images/"
 
-# STATICFILES_DIRS = [
-#     BASE_DIR / "static",
-#     BASE_DIR / "frontend/build/static"
-#     ]
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+    # BASE_DIR / "frontend/build/static"
+    ]
 
 MEDIA_ROOT = "static/images"
 STATIC_ROOT = BASE_DIR / "staticfiles"

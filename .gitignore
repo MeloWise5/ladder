@@ -1,0 +1,5 @@
+backend/ladder/.env
+*.sqlite3
+script/
+__pycache__/
+*.pyc

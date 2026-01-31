@@ -19,6 +19,7 @@ pip install pillow
 pip install django-cors-headers
 # JWT - add setting params
 pip install djangorestframework-simplejwt
+pip install requests
 
 # Install postgres
 pip install postgres
@@ -40,6 +41,23 @@ CREATE DATABASE ladder;
         "isolation_level": IsolationLevel.SERIALIZABLE,
     },
 }
+# set image upload folder structure
+# setting.py
+#############
+add folders /static/images <<<<<<<<<<<<<<
+#############
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+    # BASE_DIR / "frontend/build/static"
+    ]
+MEDIA_ROOT = "static/images"
+
+
+
+# Create an app in django that will house all the views. 
+python manage.py startapp base
+# add to setting.py 
+"base.apps.BaseConfig",
 
 # check all the settings and imports are correct
 # run test
@@ -56,22 +74,70 @@ melowise5@gmail.com
 open pgAdmin4
 view/edit data > All Rows
 
-# Time to build out the database in model.py
-# Create an app in django that will house all the views. 
-python manage.py startapp base
-# add to setting.py file to be picked up and used
-"base.apps.BaseConfig", -- "base" is the app name
-
-# create models.py /tables in the database
-python manage.py makemigrations
-python manage.py migrate 
-python manage.py runserver
-
-########################################
+####
 # React time
 # set up react and get the user login setup.
 # Node Js is installed for react
 npx create-reacte-app frontend
+npm install axios
+npm install redux
+npm install redux-thunk
+npm install react-redux
+npm install charts.js react-chartjs-2
+npm install chartjs-plugin-annotation
+npm start
+
+# now both front and back end are created. 
+# adding place holder so apis calls are cleaner
+go to package.json
+under "name"
+add "proxy": "http://127.0.0.1:8000"
+
+
+####
+# git hub
+conda install github -c conda-forge
+git init
+git add .
+git commit -m "First commit – ready for production"
+git branch -M main
+git remote add origin https://github.com/MeloWise5/ladder.git
+git push -u origin main
+
+//Update
+git add .
+git commit -m "describe your change in 5-10 words"
+git push
+
+/// requirements
+pip freeze > requirements.txt
+git add requirements.txt
+git commit -m "add requirements"
+git push
+
+#### bootstrap
+npm install react-bootstrap
+# https://fontawesome.com/v6/search
+npm install @fortawesome/fontawesome-free
+import '@fortawesome/fontawesome-free/css/all.min.css';
+# react router for navigating
+npm install react-router-dom
+npm install react-router-bootstrap
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
@@ -119,6 +185,54 @@ npm build
 npm test
 npm run eject
 
+####
+# Free Templates bootstrap
+# https://bootswatch.com/
+# https://bootswatch.com/cerulean/
+# download .min.css file
+# install the css file in teh index.js
+
+npm install react-bootstrap
+
 ########################################
 # Deploy
 ########################################
+# be inside the folder youre working on.
+conda install git --channel conda-forge -y
+git --version
+
+the initial push to github. make sure its completley empty. 
+git init
+git add .
+git commit -m "First commit – ready for production"
+git branch -M main
+git remote add origin https://github.com/YOUR-USERNAME/YOUR-REPO.git
+git push -u origin main
+
+//Update
+git add .
+git commit -m "describe your change in 5-10 words"
+git push
+
+/// requirements
+pip freeze > requirements.txt
+git add requirements.txt
+git commit -m "add requirements"
+git push
+
+// uploading to Deplyment folder
+git clone https://github.com/MeloWise5/ecom.git .
+
+// get new code
+git pull
+
+
+
+
+
+
+# Script
+pip install pytz
+pip install rich
+pip install coinbase
+pip install coinbase-advanced-py
