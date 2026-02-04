@@ -13,7 +13,11 @@ function Header() {
   const {userInfo} = userLogin;
   
   const ladderCreate = useSelector(state => state.ladderCreate)
-  const { loading: createLoading, error: createError, success: createSuccess, ladder: createdLadder } = ladderCreate;
+  const { 
+    loading: createLoading, 
+    error: createError, 
+    success: createSuccess, 
+    ladder: createdLadder } = ladderCreate;
   useEffect(() => {
     if(createSuccess && createdLadder?._id){
         console.log('Ladder created successfully!',createdLadder._id)

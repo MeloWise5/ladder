@@ -425,7 +425,6 @@ function Ladder({ladder_id}) {
               <Col>
                 <TransactionsStats ladder={ladder} />
                 <TransactionsTable ladder={ladder} status='OPEN' />
-                <TransactionsTable ladder={ladder} status='CLOSED' />
               </Col>
             </Row>
           </Tab>

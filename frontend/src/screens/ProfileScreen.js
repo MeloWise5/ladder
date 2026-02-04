@@ -333,7 +333,6 @@ function ProfileScreen() {
         <hr></hr>
         <TransactionsStats />
         <TransactionsTable status='OPEN' />
-        <TransactionsTable status='CLOSED' />
         </Col>
     </Row>
     

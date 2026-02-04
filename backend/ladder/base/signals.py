@@ -12,6 +12,7 @@ def updateUser(sender, instance, **kwargs):
     if user.email:
         user.username = user.email
 
+# when a new user is created the profile for that user is automatically created
 @receiver(post_save, sender=User)
 def create_profile(sender, instance, created, **kwargs):
     if created:

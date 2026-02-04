@@ -4,7 +4,7 @@ from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from base.models import Ladders, APICredentials, Profile
-from base.serializers import LadderSerializer, UserSerializer, UserSerializerWithToken, APICredentialsSerializer, ProfileSerializer
+from base.serializers import LadderSerializer, UserSerializer, UserListSerializer, UserSerializerWithToken, APICredentialsSerializer, ProfileSerializer
 from django.contrib.auth.hashers import make_password
 from rest_framework import status
 
@@ -77,7 +77,7 @@ def getUsers(request):
     # path: /api/users/
     # super powerfull. does left joins to get related profile data in one query
     users = User.objects.select_related('profile').all().order_by('id')
-    serializer = UserSerializer(users, many=True)
+    serializer = UserListSerializer(users, many=True)
     return Response(serializer.data)
 
 @api_view(['GET'])
@@ -120,7 +120,8 @@ def deleteUser(request, pk):
 @permission_classes([IsAuthenticated])
 def enableUserProfile(request,pk):
     data = request.data # data past by form
-    profile = Profile.objects.get(_id=pk)
+    user = User.objects.get(id=pk)
+    profile = user.profile
     profile.paid = data['paid']
     profile.save()
     serializer = ProfileSerializer(profile, many=False)

@@ -33,54 +33,72 @@ def parse_timestamp(timestamp_value):
     
     return None
 
-# Lightweight serializer for ladder lists (navigation)
-class LadderListSerializer(serializers.ModelSerializer):
-    closed_daily_transaction_count = serializers.SerializerMethodField(read_only=True)
-    open_daily_transaction_count = serializers.SerializerMethodField(read_only=True)
+
+class UserListSerializer(serializers.ModelSerializer):
+    _id = serializers.SerializerMethodField(read_only=True)
+    name = serializers.SerializerMethodField(read_only=True)
+    isAdmin = serializers.SerializerMethodField(read_only=True)
+    isPaid = serializers.SerializerMethodField(read_only=True)
+
 
     class Meta:
-        model = Ladders
-        fields = ['_id', 'name', 'symbol', 'enable', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
-
-    def _get_today_timestamp_range(self):
-        """Private helper to get today's timestamp range (start, end)"""
-        from datetime import datetime
-        today = datetime.now().strftime('%Y-%m-%d')
-        today_timestamp_start = int(datetime.strptime(today, '%Y-%m-%d').timestamp())
-        today_timestamp_end = today_timestamp_start + 86400  # 24 hours in seconds
-        return today_timestamp_start, today_timestamp_end
+        model = User
+        fields = ['id','_id', 'username', 'email', 'name', 'isAdmin', 'isPaid']
+    # this is a way to make custom fields in serializer
+    # the other way would be in teh databse. but this is easier
+    def get__id(self, obj):
+        return obj.id
+    def get_isAdmin(self, obj):
+        return obj.is_staff
+    def get_name(self, obj):
+        name = obj.first_name
+        if name == '':
+            name = obj.email
+        return name
+    def get_isPaid(self, obj):
+        isPaid = Profile.objects.get(user=obj).paid
+        return isPaid
     
-    def _count_transactions_today(self, transactions, timestamp_field):
-        """Private helper to count transactions with timestamp in today's range"""
-        today_start, today_end = self._get_today_timestamp_range()
-        count = 0
-        
-        for trans in transactions:
-            field_value = getattr(trans, timestamp_field, None)
-            if field_value and field_value != '0':
-                try:
-                    timestamp = float(field_value)
-                    if today_start <= timestamp < today_end:
-                        count += 1
-                except (ValueError, TypeError):
-                    continue
-        return count
-
-    def get_closed_daily_transaction_count(self, obj):
-        transactions = obj.transactions_set.filter(status='CLOSED')
-        return self._count_transactions_today(transactions, 'sell_date')
     
-    def get_open_daily_transaction_count(self, obj):
-        transactions = obj.transactions_set.exclude(status='CLOSED')
-        return self._count_transactions_today(transactions, 'buy_placed')
+    def get_top_5_steps_by_profit(self, obj):
+        """Get top 5 steps with the most profit from closed transactions"""
+        from collections import defaultdict
         
+        ladders = obj.ladders_set.all()
+        closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
+        step_profit = defaultdict(float)
+        step_info = {}
+        
+        for trans in closed_transactions:
+            if trans.step and trans.profit:
+                # Extract the step ID properly
+                step_id = trans.step._id if hasattr(trans.step, '_id') else (trans.step.id if hasattr(trans.step, 'id') else trans.step)
+                step_profit[step_id] += float(trans.profit)
+                
+                # Store step details for reference - get from transaction's step directly
+                if step_id not in step_info:
+                    step_info[step_id] = {
+                        'step_code': trans.step.step_code,
+                        'price': float(trans.step.price) if trans.step.price else 0,
+                        'ladder_name': trans.ladder.name if trans.ladder else 'Unknown'
+                    }
+        
+        # Sort by profit descending and take top 5
+        top_5 = sorted(step_profit.items(), key=lambda x: x[1], reverse=True)[:5]
+        return [{
+            'step_id': int(step_id),  # Ensure it's an integer
+            'step_code': step_info.get(step_id, {}).get('step_code', 'Unknown'),
+            'price': step_info.get(step_id, {}).get('price', 0),
+            'ladder_name': step_info.get(step_id, {}).get('ladder_name', 'Unknown'),
+            'profit': round(profit, 2)
+        } for step_id, profit in top_5]
+       
 class UserSerializer(serializers.ModelSerializer):
     _id = serializers.SerializerMethodField(read_only=True)
     name = serializers.SerializerMethodField(read_only=True)
     isAdmin = serializers.SerializerMethodField(read_only=True)
     profile = serializers.SerializerMethodField(read_only=True)
     open_transactions = serializers.SerializerMethodField(read_only=True)
-    closed_transactions = serializers.SerializerMethodField(read_only=True)
     avg_transaction_profit = serializers.SerializerMethodField(read_only=True)
     closed_transaction_count = serializers.SerializerMethodField(read_only=True)
     open_transaction_count = serializers.SerializerMethodField(read_only=True)
@@ -94,7 +112,7 @@ class UserSerializer(serializers.ModelSerializer):
     class Meta:
         model = User
         fields = ['id','_id', 'username', 'email', 'name', 'isAdmin', 'profile',
-                  'open_transactions', 'closed_transactions',
+                  'open_transactions',
                   'avg_transaction_profit', 'closed_transaction_count',
                   'open_transaction_count', 'avg_buy_days', 'avg_sell_days',
                   'avg_trades_per_day', 'avg_profit_per_day',
@@ -128,16 +146,7 @@ class UserSerializer(serializers.ModelSerializer):
         serializer = TransactionsSerializer(transactions, many=True)
         return serializer.data
     
-    def get_closed_transactions(self, obj):
-        # Get all ladders for this user
-        ladders = obj.ladders_set.all()
-        # Get all closed transactions from all ladders
-        transactions = Transactions.objects.filter(
-            ladder__in=ladders,
-            status='CLOSED'
-        ).order_by(F('sell_date').asc(nulls_last=True))
-        serializer = TransactionsSerializer(transactions, many=True)
-        return serializer.data
+    
     def get_avg_transaction_profit(self, obj):
         ladders = obj.ladders_set.all()
         transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
@@ -346,7 +355,6 @@ class UserSerializer(serializers.ModelSerializer):
         
         return super().to_representation(instance)
     
-
 class UserSerializerWithToken(UserSerializer):
 
     token = serializers.SerializerMethodField(read_only=True)
@@ -371,13 +379,108 @@ class ProfileSerializer(serializers.ModelSerializer):
     def get_isPaid(self, obj):
         return obj.is_paid
 
+# Lightweight serializer for ladder lists (navigation)
+class LadderListSerializer(serializers.ModelSerializer):
+    closed_daily_transaction_count = serializers.SerializerMethodField(read_only=True)
+    open_daily_transaction_count = serializers.SerializerMethodField(read_only=True)
 
+    class Meta:
+        model = Ladders
+        fields = ['_id', 'name', 'symbol', 'enable', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
+    def _get_today_timestamp_range(self):
+        """Private helper to get today's date range (start, end)"""
+        from datetime import datetime, timedelta
+        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
+        tomorrow = today + timedelta(days=1)
+        return today, tomorrow
+    
+    def _count_transactions_today(self, transactions, timestamp_field):
+        """Private helper to count transactions with timestamp in today's range"""
+        today_start, today_end = self._get_today_timestamp_range()
+        count = 0
+        
+        for trans in transactions:
+            field_value = getattr(trans, timestamp_field, None)
+            if field_value and field_value != '0':
+                parsed_date = parse_timestamp(field_value)
+                if parsed_date:
+                    # Strip timezone for comparison
+                    if parsed_date.tzinfo is not None:
+                        parsed_date = parsed_date.replace(tzinfo=None)
+                    
+                    if today_start <= parsed_date < today_end:
+                        count += 1
+        return count
+
+    def get_closed_daily_transaction_count(self, obj):
+        from datetime import datetime, date
+        transactions = obj.transactions_set.filter(status='CLOSED')
+        today = date.today()
+        count = 0
+        
+        for trans in transactions:
+            if trans.sell_date and trans.sell_date != '0':
+                try:
+                    # Try as Unix timestamp first
+                    if isinstance(trans.sell_date, str):
+                        try:
+                            timestamp = float(trans.sell_date)
+                            trans_date = datetime.fromtimestamp(timestamp).date()
+                        except ValueError:
+                            # Try as ISO format
+                            trans_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00')).date()
+                    else:
+                        timestamp = float(trans.sell_date)
+                        trans_date = datetime.fromtimestamp(timestamp).date()
+                    
+                    if trans_date == today:
+                        count += 1
+                except (ValueError, TypeError, OSError):
+                    continue
+        
+        return count
+    
+    def get_open_daily_transaction_count(self, obj):
+        from datetime import datetime, date
+        transactions = obj.transactions_set.exclude(status='CLOSED')
+        today = date.today()
+        count = 0
+        
+        for trans in transactions:
+            if trans.buy_placed and trans.buy_placed != '0':
+                try:
+                    # Parse the timestamp
+                    if isinstance(trans.buy_placed, str):
+                        timestamp = float(trans.buy_placed)
+                    else:
+                        timestamp = trans.buy_placed
+                    
+                    # Convert to date and compare
+                    trans_date = datetime.fromtimestamp(timestamp).date()
+                    if trans_date == today:
+                        count += 1
+                except (ValueError, TypeError, OSError):
+                    continue
+        
+        return count
+
+class LadderListAdminSerializer(serializers.ModelSerializer):
+    user_name = serializers.SerializerMethodField(read_only=True)
+
+    class Meta:
+        model = Ladders
+        fields = ['_id', 'name','user_name', 'enable', 'symbol','symbol_name', 'market']
+    
+    def get_user_name(self, obj):
+        user_name = User.objects.get(id=obj.user.id).username
+        return user_name
+
+    
 class LadderSerializer(serializers.ModelSerializer):
     user = serializers.SerializerMethodField(read_only=True)
     steps = serializers.SerializerMethodField(read_only=True)
     transactions = serializers.SerializerMethodField(read_only=True)
-    closed_transactions = serializers.SerializerMethodField(read_only=True)
     snapshot = serializers.SerializerMethodField(read_only=True)
     avg_transaction_profit = serializers.SerializerMethodField(read_only=True)
     closed_transaction_count = serializers.SerializerMethodField(read_only=True)
@@ -407,10 +510,7 @@ class LadderSerializer(serializers.ModelSerializer):
         transactions = obj.transactions_set.all().exclude(status='CLOSED').order_by(F('sell_price').asc(nulls_last=True))
         serializer = TransactionsSerializer(transactions, many=True)
         return serializer.data
-    def get_closed_transactions(self, obj):
-        transactions = obj.transactions_set.all().filter(status='CLOSED').order_by(F('sell_date').asc(nulls_last=True))
-        serializer = TransactionsSerializer(transactions, many=True)
-        return serializer.data
+
     
     def get_snapshot(self, obj):
         """Get the latest snapshot for this ladder"""

@@ -20,10 +20,17 @@ import traceback
 
 def load_exchange(user_data,EXCHANGE_NAME):
     
+    # Check if user has paid subscription
+    try:
+        if not user_data.profile.paid:  # Check profile's 'paid' field
+            return 'User subscription not active'
+    except:
+        return 'User profile not found'
+    
     # Use filter to find credentials - more flexible than get
     creds = APICredentials.objects.filter(
-        user=user_data, 
-        is_paid=True # t'aint nothing free
+        user=user_data,
+        is_active=True  # Check if credentials are active
     )
     
     # Try to find by platform name (case-insensitive)

@@ -12,8 +12,8 @@ function LadderListScreen() {
     const navigate = useNavigate()
     const dispatch = useDispatch()
     const [message, setMessage] = useState(null)
-    const ladderList = useSelector(state => state.ladderList)
-    const { loading, error, ladders } = ladderList
+    const ladderAdminList = useSelector(state => state.ladderAdminList)
+    const { loading, error, ladders } = ladderAdminList
     const ladderEnabled = useSelector(state => state.ladderUpdateEnabled)
     const { loading: enabledLoading, error: enabledError, success: enabledSuccess } = ladderEnabled
     const ladderCreate = useSelector(state => state.ladderCreate)
@@ -101,7 +101,7 @@ function LadderListScreen() {
                         <tr key={ladder._id}>
                             <td>{ladder._id}</td>
                             <td>{ladder.name}</td>
-                            <td>{ladder.user?.name || 'N/A'}</td>
+                            <td>{ladder.user_name || 'N/A'}</td>
                             <td>
                                 <Form>
                                     <Form.Group controlId='enable'>

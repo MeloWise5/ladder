@@ -34,7 +34,7 @@ CREATE DATABASE ladder;
     "ENGINE": "django.db.backends.postgresql",
     'NAME': "ladder",
     'USER': "postgres",
-    'PASSWORD': "1949Com5Ln",
+    'PASSWORD': "1949**",
     'HOST': "localhost",
     'PORT': "5432",
     "OPTIONS": {

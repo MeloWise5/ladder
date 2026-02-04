@@ -1,5 +1,6 @@
 import { 
     LADDER_LIST_REQUEST, LADDER_LIST_SUCCESS, LADDER_LIST_FAIL, LADDER_LIST_RESET,
+    LADDER_ADMIN_LIST_REQUEST, LADDER_ADMIN_LIST_SUCCESS, LADDER_ADMIN_LIST_FAIL, LADDER_ADMIN_LIST_RESET,
     LADDER_DETAILS_REQUEST, LADDER_DETAILS_SUCCESS, LADDER_DETAILS_FAIL, LADDER_DETAILS_RESET,
     LADDER_DELETE_REQUEST, LADDER_DELETE_SUCCESS, LADDER_DELETE_FAIL, LADDER_DELETE_RESET,
     LADDER_CREATE_REQUEST, LADDER_CREATE_SUCCESS, LADDER_CREATE_FAIL, LADDER_CREATE_RESET,
@@ -16,6 +17,21 @@ export const ladderListReducer = (state = { ladders: [] }, action) => {
         case LADDER_LIST_FAIL:
             return { loading: false, error: action.payload }
         case LADDER_LIST_RESET:
+            return { loading: false, ladders: [] }
+        default:
+            return state
+    }
+}
+
+export const ladderAdminListReducer = (state = { ladders: [] }, action) => {
+    switch (action.type) {
+        case LADDER_ADMIN_LIST_REQUEST:
+            return { ...state, loading: true }
+        case LADDER_ADMIN_LIST_SUCCESS:
+            return { loading: false, ladders: action.payload }
+        case LADDER_ADMIN_LIST_FAIL:
+            return { loading: false, error: action.payload }
+        case LADDER_ADMIN_LIST_RESET:
             return { loading: false, ladders: [] }
         default:
             return state

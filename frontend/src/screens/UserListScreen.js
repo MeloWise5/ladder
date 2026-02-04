@@ -31,12 +31,10 @@ function UserListScreen() {
 
     useEffect(() => {
         if (users && users.length > 0) {
-            // Create object mapping user profile IDs to their paid status
+            // Create object mapping user IDs to their paid status
             const paidStatuses = {}
             users.forEach(user => {
-                if (user.profile) {
-                    paidStatuses[user.profile._id] = user.profile.paid
-                }
+                paidStatuses[user._id] = user.paid
             })
             setIsPaid(paidStatuses)
         }
@@ -54,7 +52,7 @@ function UserListScreen() {
             _id:e.target.id,
             paid: e.target.checked,
         }))
-        }
+    }
   console.log(users)
   return (
     <div>
@@ -78,10 +76,29 @@ function UserListScreen() {
                             <td>{user._id}</td>
                             <td>{user.name}</td>
                             <td><a href={`mailto:${user.email}`}>{user.email}</a></td>
-                            <td><Form>
-            <Form.Group controlId='enable'>
-                <Form.Check type='switch' placeholder='Enter enable' id={user.profile._id} checked={user.profile.paid}  onChange={enabledHandler}></Form.Check> 
-            </Form.Group></Form></td>
+                            <td>
+                                <Form>
+                                    <Form.Group controlId='enable' style={{cursor: 'pointer'}}>
+                                        <Form.Check 
+                                            type='switch' 
+                                            placeholder='Enter enable' 
+                                            id={user._id} 
+                                            checked={user.isPaid || false}  
+                                            onChange={enabledHandler}
+                                            style={{cursor: 'pointer'}}
+                                            className="pointer-switch"
+                                        />
+                                    </Form.Group>
+                                    <style>{`
+                                        .pointer-switch, 
+                                        .pointer-switch input, 
+                                        .pointer-switch label,
+                                        .pointer-switch .form-check-input {
+                                        cursor: pointer !important;
+                                        }
+                                    `}</style>
+                                </Form>
+                            </td>
                             <td>{user.isAdmin ? (<i className='fas fa-check' style={{ color: 'green' }}></i>) : (<i className='fas fa-times' style={{ color: 'red' }}></i>)}</td>
                             <td>    
                                 <LinkContainer to={`/admin/user/${user._id}/edit`}>

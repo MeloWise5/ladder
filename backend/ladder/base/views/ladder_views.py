@@ -6,7 +6,7 @@ from rest_framework.response import Response
 from rest_framework import viewsets, status
 from django.db.models import Avg, Sum, Count, Q
 from base.models import Ladders, APICredentials
-from base.serializers import LadderSerializer, LadderListSerializer
+from base.serializers import LadderSerializer, LadderListAdminSerializer, LadderListSerializer
 from django.utils import timezone
 import requests
 import os
@@ -16,7 +16,7 @@ from dotenv import load_dotenv
 @api_view(['GET'])
 def getLadders(request):
     ladders = Ladders.objects.all().order_by('_id')
-    serializer = LadderSerializer(ladders, many=True)
+    serializer = LadderListAdminSerializer(ladders, many=True)
     return Response(serializer.data)
 
 

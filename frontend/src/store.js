@@ -2,7 +2,7 @@ import { createStore, combineReducers, applyMiddleware} from 'redux'
 import { thunk }  from 'redux-thunk'
 
 import { 
-    ladderListReducer, ladderDetailsReducer, ladderDeleteReducer, ladderCreateReducer,
+    ladderListReducer, ladderAdminListReducer, ladderDetailsReducer, ladderDeleteReducer, ladderCreateReducer,
     ladderUpdateReducer, ladderUpdateEnabledReducer } from './reducers/ladderReducers'
 import { 
     userLoginReducer, userRegisterReducer, userDetailsReducer, 
@@ -22,6 +22,7 @@ import {
 
 const reducer = combineReducers({
     ladderList: ladderListReducer,
+    ladderAdminList: ladderAdminListReducer,
     ladderDetails: ladderDetailsReducer,
     ladderCreate: ladderCreateReducer,
     ladderDelete:ladderDeleteReducer,
