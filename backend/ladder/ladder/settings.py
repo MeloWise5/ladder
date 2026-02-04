@@ -140,29 +140,29 @@ WSGI_APPLICATION = "ladder.wsgi.application"
 
 DATABASES = {
     # development
-    "default": {
-        "ENGINE": "django.db.backends.postgresql",
-        'NAME': "ladder",
-        'USER': "postgres",
-        'PASSWORD': "1949Com5Ln",
-        'HOST': "localhost",
-        'PORT': "5432",
-        "OPTIONS": {
-            "isolation_level": IsolationLevel.SERIALIZABLE,
-        },
-    }
-    #Production
     # "default": {
     #     "ENGINE": "django.db.backends.postgresql",
-    #     'NAME': DATABASE_NAME,
-    #     'USER': DATABASE_USER,
-    #     'PASSWORD': DATABASE_PASSWORD,
-    #     'HOST': DATABASE_HOST,
-    #     'PORT': DATABASE_PORT,
-    #     # "OPTIONS": {
-    #     #     "isolation_level": IsolationLevel.SERIALIZABLE,
-    #     # },
-    #}
+    #     'NAME': "ladder",
+    #     'USER': "postgres",
+    #     'PASSWORD': "1949Com5Ln",
+    #     'HOST': "localhost",
+    #     'PORT': "5432",
+    #     "OPTIONS": {
+    #         "isolation_level": IsolationLevel.SERIALIZABLE,
+    #     },
+    # }
+    # Production
+    "default": {
+        "ENGINE": "django.db.backends.postgresql",
+        'NAME': DATABASE_NAME,
+        'USER': DATABASE_USER,
+        'PASSWORD': DATABASE_PASSWORD,
+        'HOST': DATABASE_HOST,
+        'PORT': DATABASE_PORT,
+        # "OPTIONS": {
+        #     "isolation_level": IsolationLevel.SERIALIZABLE,
+        # },
+    }
 }
 
 

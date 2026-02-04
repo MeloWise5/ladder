@@ -124,10 +124,87 @@ import '@fortawesome/fontawesome-free/css/all.min.css';
 npm install react-router-dom
 npm install react-router-bootstrap
 
+#########################################################
+#########################################################
+#########################################################
+# hash router. 
+on port 8000 when we do a hard refesh the react router we have an issue
+since when react moves through its pages it never reloads the page just componente. 
+A hard refersh make react have an issue when your on a page other than /
+if you are on /products/13. On the hard refresh react does not know how to handle the url
+we use the # symbol in the url so django does not think its a hardcoded url. 
+This allows django to server the templetview correcly which holds the build project. 
+This will allow react to correctly navigate the url to the correct page. 
+# app.js
+import { HashRouter as Router, Routes, Route } from "react-router-dom";
+#########################################################
+## going live. long description
+# Merging project to django
+# Grab the frontend folder. Place it into the backend folders
+CD /backend/frontend/ 
+npm run build
+
+# Configure setting.py django to point to the newly added build folder
+# open setting.py
+import os
+TEMPLATES = [
+    {
+        *****
+        "DIRS": [
+            # Let django know where the home page is located
+            os.path.join(BASE_DIR, "frontend/build")
+        ],
+        *******
+    },
+]
+
+# open urls.py
+from django.views.generic import TemplateView
+
+urlpatterns = [
+    ******
+    path("", TemplateView.as_view(template_name="index.html")),
+    ******
+]
+
+# open setting.py
+# configuring the static files for our js and css files
+
+STATICFILES_DIRS = [
+    BASE_DIR / "static",
+    BASE_DIR / "frontend/build/static"
+    ]
+
+######
+# react is now linked to django
+# locally you can start the django project 
+# python manage.py runserver
+# and on port 8000 your react project will be there. 
+######
+# react changes. 
+# run build again and the django port 8000 will reflect the changes.
 
 
+##### VPS
+psql -U melowisev -d ecommerce
+CREATE DATABASE ladder;
+pass 1949****
 
+###### setting.py
+# update database credentials .env
 
+###### populate the live database with table
+# locally run 
+python manage.py migrate
+
+# create a user on the new live database. 
+# make sure the username is an email address.
+python manage.py createsuperuser
+melowise5@gmail.com
+1949---
+
+open pgAdmin4
+view/edit data > All Rows
 
 
 
