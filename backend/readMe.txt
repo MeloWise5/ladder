@@ -125,7 +125,7 @@ npm install react-router-dom
 npm install react-router-bootstrap
 
 #########################################################
-#########################################################
+######################################################### going live
 #########################################################
 # hash router. 
 on port 8000 when we do a hard refesh the react router we have an issue
@@ -206,9 +206,44 @@ melowise5@gmail.com
 open pgAdmin4
 view/edit data > All Rows
 
+###### setting.py
+# update allowed_hosts['your_url','yourip'] 
 
+########################################### collect static
+###### setting.py
+# collect static
+MEDIA_ROOT = BASE_DIR / "static/images"
+STATIC_ROOT = BASE_DIR / "staticfiles"
 
+###### urls.py
+urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)
 
+pip install whitenoise
+
+###### setting.py
+MIDDLEWARE = [
+    "whitenoise.middleware.WhiteNoiseMiddleware",
+]
+
+###### Run collection command
+# folder ladder/backend/
+python manage.py collectstatic
+
+###### setting.py
+# when debug is true the system will grab from teh static file. when not in debug
+# they system will grab from teh staticfiles folder
+DEBUG = False
+
+###### gunicorn
+## ladder/backend/ folder
+pip install gunicorn
+
+#######################################
+### requirements
+pip freeze > requirements.txt
+git add requirements.txt
+git commit -m "add requirements"
+git push
 
 
 
