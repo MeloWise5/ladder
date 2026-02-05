@@ -13,6 +13,9 @@ django-admin startproject ladder
 # run test
 python manage.py runserver
 
+# PRODUCTION: Collect static files (admin CSS/JS)
+python manage.py collectstatic --noinput
+
 # add requirment packages
 pip install pillow
 # install params and settings
@@ -266,6 +269,34 @@ git pull
 ###############################################
 # Setting Nginx settings
 sudo nano /etc/nginx/conf.d/default.conf
+
+# Nginx configuration example:
+# server {
+#     listen 80;
+#     server_name ladder.melowise.com;
+#     
+#     # Serve Django static files (admin CSS/JS)
+#     location /static/ {
+#         alias /home/melowisev/site/ladder/backend/ladder/staticfiles/;
+#         expires 30d;
+#         add_header Cache-Control "public, immutable";
+#     }
+#     
+#     # Serve Django media files
+#     location /media/ {
+#         alias /home/melowisev/site/ladder/backend/ladder/static/images/;
+#     }
+#     
+#     # Proxy all other requests to Gunicorn
+#     location / {
+#         proxy_pass http://127.0.0.1:8000;
+#         proxy_set_header Host $host;
+#         proxy_set_header X-Real-IP $remote_addr;
+#         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+#         proxy_set_header X-Forwarded-Proto $scheme;
+#     }
+# }
+
 # add server block
 Save: Press Ctrl+O (that's the letter O, not zero), then press Enter to confirm
 Exit: Press Ctrl+X
@@ -276,6 +307,10 @@ sudo nginx -t && sudo systemctl reload nginx
 # start system
 sudo systemctl start nginx
 sudo systemctl status nginx
+
+#static files issues. 
+# flow: Commit → Pull → Collect.py on VPS
+# Never commit staticfiles/ - it's generated, not source code.
 
 ###############################################
 ###### GoDaddy VPS Permissions
@@ -292,14 +327,19 @@ pip install django djangorestframework django-cors-headers djangorestframework-s
 
 # Navigate to where manage.py is located (backend folder)
 ## folder cd /home/melowisev/site/ladder/backend/ladder/
+
+# IMPORTANT: Collect static files for admin panel
+python manage.py collectstatic --noinput
+
+# Test gunicorn
 /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 0.0.0.0:8001
 
 #run in background 
-nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 0.0.0.0:8000 > gunicorn.log 2>&1 &
+nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
 
 ########## ssl
 # encrypt free
-# install certbot 
+# install certbot might not need to. 
 # check if its installed 
 certbot --version
 
@@ -348,6 +388,9 @@ NOTE::::
 # Make sure the ngix port and teh gunicorn bind port are the same. 
 sudo cat /etc/nginx/conf.d/default.conf | grep proxy_pass
 
+#Tail Logs
+# Gunicorn
+tail -f gunicorn.log
 
 ########################################
 # Conda
