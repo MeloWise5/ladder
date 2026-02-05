@@ -245,15 +245,107 @@ git add requirements.txt
 git commit -m "add requirements"
 git push
 
+#######################################
+### final commit
+# go to the backend folder
+git add .
+git commit -m ""
+git push 
+
+## VPS server
+site/ - the folder where the github is pulled into
+
+git clone https://github.com/MeloWise5/ladder.git
+
+// get new code
+git pull
 
 
+###############################################
+###### Nginx : 80 ( System service outside the env)
+###############################################
+# Setting Nginx settings
+sudo nano /etc/nginx/conf.d/default.conf
+# add server block
+Save: Press Ctrl+O (that's the letter O, not zero), then press Enter to confirm
+Exit: Press Ctrl+X
+
+# reload system 
+sudo nginx -t && sudo systemctl reload nginx
+
+# start system
+sudo systemctl start nginx
+sudo systemctl status nginx
+
+###############################################
+###### GoDaddy VPS Permissions
+###############################################
+sudo chmod -R 755 /home/melowisev/site
+sudo chmod 711 /home/melowisev
+
+conda create -n ladder python=3.14 -y
+
+# navigate to the folder holding the requirements
+conda activate ladder
+pip install -r requirements.txt
+pip install django djangorestframework django-cors-headers djangorestframework-simplejwt pillow gunicorn psycopg[binary]  python-dotenv
+
+# Navigate to where manage.py is located (backend folder)
+## folder cd /home/melowisev/site/ladder/backend/ladder/
+/home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 0.0.0.0:8001
+
+#run in background 
+nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 0.0.0.0:8000 > gunicorn.log 2>&1 &
+
+########## ssl
+# encrypt free
+# install certbot 
+# check if its installed 
+certbot --version
+
+# set domain up make sure it points to the right ip address
+nslookup ladder.melowise.com
+
+# make sur there is a server name. 
+# default we put server_name _;
+sudo nano /etc/nginx/conf.d/default.conf
+# in the server block add
+server_name ladder.melowise.com;
+
+# reload nginx
+sudo nginx -t && sudo systemctl reload nginx
+
+# check nginx status
+sudo systemctl status nginx
+
+# verify your domain works
+curl http://ladder.melowise.com
+
+# run certbot to get the ssl
+# on my VPS certbot is installed system wide. 
+# run this command in your conda env 
+which certbot
+# this will bring you back the path to the command
+sudo certbot --nginx -d ladder.melowise.com
+
+# DNS propgation delay, this might take like 5 to 30min. 
 
 
+###### git hub deploy
+# you need a personal acces Token
+#https://github.com/settings/tokens
+# token classic
+# ok to not have a expiration date.
+# click repo only
+# generate token
 
-
-
-
-
+git config --global credential.helper store
+git add .
+git commit -m ""
+git push
+#-------------------------- this will pop up
+Username for 'https://github.com': Melowise5
+Password for 'https://Melowise5@github.com': ADD TOKEN HERE AS YOUR PASSWORD
 
 
 ########################################
