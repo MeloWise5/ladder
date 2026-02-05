@@ -330,8 +330,38 @@ sudo certbot --nginx -d ladder.melowise.com
 
 # DNS propgation delay, this might take like 5 to 30min. 
 
-
+# how to update with new code. 
 ###### git hub deploy
+cd /home/melowisev/site/ladder
+git reset --hard origin/main
+sudo killall gunicorn
+cd backend/ladder
+nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
+
+# no matter what you do, if there is a achnge you have to restart gunicorn. 
+# gunicorn create a instance in memeory and djanog only reads the f.env and setting.py files once. 
+sudo killall gunicorn
+cd backend/ladder
+nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
+
+NOTE::::
+# Make sure the ngix port and teh gunicorn bind port are the same. 
+sudo cat /etc/nginx/conf.d/default.conf | grep proxy_pass
+
+
+########################################
+# Conda
+########################################
+# view all envs on system
+conda env list
+conda info --envs
+
+# creating env 
+---- best to set the python version here
+conda create -n myenv python=3.14
+
+
+
 # you need a personal acces Token
 #https://github.com/settings/tokens
 # token classic
@@ -347,17 +377,6 @@ git push
 Username for 'https://github.com': Melowise5
 Password for 'https://Melowise5@github.com': ADD TOKEN HERE AS YOUR PASSWORD
 
-
-########################################
-# Conda
-########################################
-# view all envs on system
-conda env list
-conda info --envs
-
-# creating env 
----- best to set the python version here
-conda create -n myenv python=3.14
 
 ########################################
 # Postgres
