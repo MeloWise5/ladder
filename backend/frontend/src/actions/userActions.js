@@ -276,7 +276,7 @@ export const getUserCredentials = () => async (dispatch, getState) => {
     }   
 }
 export const createUserCredentials = () => async (dispatch, getState) => {
-    console.log('createUserCredentials action called')
+    //console.log('createUserCredentials action called')
     try {
         dispatch({ type: USER_CREATE_CREDENTIALS_REQUEST })    
         const { userLogin: { userInfo } } = getState()

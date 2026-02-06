@@ -14,7 +14,7 @@ export default function BarGraph({ LADDER_ID, DATE_METHOD }) {
     const snapshotLadderProfitChart = useSelector(state => state.snapshotLadderProfitChart)
     const {snapshot_profit_chart, loading, error } = snapshotLadderProfitChart
     useEffect(() => {
-        console.log("Dispatching snapshotLadderProfitChartAction with:", LADDER_ID, DATE_METHOD || 'all');
+        //console.log("Dispatching snapshotLadderProfitChartAction with:", LADDER_ID, DATE_METHOD || 'all');
         dispatch(snapshotLadderProfitChartAction(LADDER_ID || 'all', DATE_METHOD || 'all'));
     }, [dispatch, LADDER_ID, DATE_METHOD]);
     //console.log("snapshot_profit_chart:", snapshot_profit_chart);

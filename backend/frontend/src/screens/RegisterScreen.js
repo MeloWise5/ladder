@@ -9,7 +9,7 @@ import { register } from '../actions/userActions'
 
 
 function RegisterScreen() {
-    console.log('Register page loaded')
+    //console.log('Register page loaded')
     const [name, setName] = useState('')
     const [email, setEmail] = useState('')
     const [password, setPassword] = useState('')
@@ -22,10 +22,8 @@ function RegisterScreen() {
 
     useEffect(() => {
         if(userInfo && userInfo?._id){
-            console.log("redirect from register page")
+            //console.log("redirect from register page")
             navigate('/')
-        }else{
-            console.log("userInfo: " + userInfo)
         }
     }, [userInfo, navigate])
 

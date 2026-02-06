@@ -81,7 +81,7 @@ function Ladder({ladder_id}) {
     
     // Validate ladderId is a valid number
     if (!ladderId || isNaN(ladderId)) {
-      console.error('Invalid ladder ID:', ladder_id)
+      //console.error('Invalid ladder ID:', ladder_id)
       navigate('/')
       return
     }
@@ -221,7 +221,7 @@ function Ladder({ladder_id}) {
   const handleAISuggestions = () => { 
     // Prevent duplicate requests
     if (tradeSuggestionLoading) {
-      console.log('AI suggestion request already in progress');
+      //console.log('AI suggestion request already in progress');
       return;
     }
     

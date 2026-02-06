@@ -26,7 +26,7 @@ function LadderListScreen() {
 
     useEffect(() => {
         if (userInfo && userInfo.isAdmin) {
-            console.log('Fetching ladders for admin'+userInfo.isAdmin)
+            //console.log('Fetching ladders for admin'+userInfo.isAdmin)
             if (createSuccess) {
                 dispatch({ type: LADDER_CREATE_RESET })
                 navigate(`/ladder/${createdLadder._id}/edit`, {

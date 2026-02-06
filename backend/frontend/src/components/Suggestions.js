@@ -25,7 +25,7 @@ function Suggestions({suggestionLadderType, tradeSuggestionData, selectedSymbols
             }
         })
     }
-    console.log(tradeSuggestionData)
+    //console.log(tradeSuggestionData)
     return (
         <div>
             {selectedSymbols.length > 0 && (

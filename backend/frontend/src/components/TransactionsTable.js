@@ -56,10 +56,10 @@ function TransactionsTable({ladder=false, status}) {
   
   let all_user_transactions = []
   if (!ladder){
-    console.log('1',status)
-    if(status === 'CLOSED'){console.log('CLOSED')
+    //console.log('1',status)
+    if(status === 'CLOSED'){//console.log('CLOSED')
       all_user_transactions = user?.closed_transactions || [];
-    }else if(status === 'OPEN'){console.log('OPEN')
+    }else if(status === 'OPEN'){//console.log('OPEN')
       all_user_transactions = user?.open_transactions || [];
     }
     // grab the user id from the state
@@ -188,7 +188,7 @@ function TransactionsTable({ladder=false, status}) {
   const cancelOrderHandler = useCallback((market,orderId,transaction_id, side, step_id) => {
     //console.log('cancelOrderHandler called:', {market, orderId, transaction_id, side, step_id});
     if (window.confirm('Are you sure you want to cancel this order? \n\nIf you want to Stop ALL SELLING of shares. \nEdit your ladders direction to BUY.\n Otherwise, the script will make the same trade.')) {
-      console.log('User confirmed cancellation');
+      //console.log('User confirmed cancellation');
       market === 'Crypto' && dispatch(cryptoDeleteTrade({orderId, transaction_id, side, step_id}))
       market === 'Stocks' && dispatch(stocksDeleteTrade({orderId, transaction_id, side, step_id}))
     }

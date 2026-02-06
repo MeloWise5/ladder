@@ -53,7 +53,7 @@ function UserListScreen() {
             paid: e.target.checked,
         }))
     }
-  console.log(users)
+  //console.log(users)
   return (
     <div>
         <h1>Users</h1>

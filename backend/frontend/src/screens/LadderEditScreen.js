@@ -118,7 +118,7 @@ function LadderEditScreen() {
       ladder?.market === "Crypto" && setMarketLocked(true);
       ladder?.market === "Stocks" && setMarketLocked(true);
     } else {
-      console.log("get the ladder details: ", ladderId);
+      //console.log("get the ladder details: ", ladderId);
       dispatch(detailsLadder(ladderId));
     }
   }, [
@@ -133,7 +133,7 @@ function LadderEditScreen() {
 
   const submitHandler = (e) => {
     e.preventDefault();
-    console.log("update ladder" + enable + true);
+    //console.log("update ladder" + enable + true);
     dispatch(
       updateLadder({
         _id: ladder._id,
@@ -198,7 +198,7 @@ function LadderEditScreen() {
         setSuggestions(response.data.securities.security || []);
         setShowSuggestions(true);
       } catch (error) {
-        console.error("Error fetching symbol suggestions:", error);
+        //console.error("Error fetching symbol suggestions:", error);
         setSuggestions([]);
       }
     } else {

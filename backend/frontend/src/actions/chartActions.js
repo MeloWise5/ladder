@@ -17,7 +17,7 @@ export const snapshotLadderProfitChartAction = (id = 'all', date_method = 'all')
                 Authorization: `Bearer ${userInfo.token}`,
             },
         }
-        console.log("Fetching snapshot chart data for ladder:", id, "from date:", date_method)
+        //console.log("Fetching snapshot chart data for ladder:", id, "from date:", date_method)
         const { data } = await axios.get(`/api/snapshot/chart/profit/${id}?date_method=${date_method}`, config)
         dispatch({
             type: SNAPSHOT_LADDER_PROFIT_SUCCESS,

@@ -20,7 +20,7 @@ function Header() {
     ladder: createdLadder } = ladderCreate;
   useEffect(() => {
     if(createSuccess && createdLadder?._id){
-        console.log('Ladder created successfully!',createdLadder._id)
+        //console.log('Ladder created successfully!',createdLadder._id)
         dispatch({type:LADDER_CREATE_RESET})
         const from = `/ladder/${createdLadder._id}/edit`;
         navigate(from);

@@ -8,7 +8,7 @@ import {
 } from '../constants/tradeConstants'
 export const cryptoDeleteTrade = (trade_data) => async (dispatch, getState) => {
     try {
-        console.log('Deleting crypto trade:')
+        //console.log('Deleting crypto trade:')
         dispatch({ type: CRYPTO_DELETE_REQUEST })
         const {
             userLogin: { userInfo },
@@ -117,7 +117,7 @@ export const tradeSuggestionGROK = (suggestion_data, abortSignal = null) => asyn
     } catch (error) {
         // Don't dispatch error if request was aborted
         if (axios.isCancel(error) || error.name === 'CanceledError') {
-            console.log('Request cancelled by user');
+            //console.log('Request cancelled by user');
             return;
         }
         dispatch({

@@ -156,7 +156,7 @@ function ProfileScreen() {
 
     }
     const enabledHandler = (e) => {
-        console.log('Toggle:', e.target.id, 'to', e.target.checked)
+        //console.log('Toggle:', e.target.id, 'to', e.target.checked)
         dispatch(updateEnabledUserCredentials({
             _id:e.target.id,
             is_active: e.target.checked,
