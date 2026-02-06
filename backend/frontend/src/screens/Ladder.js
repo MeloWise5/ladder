@@ -256,19 +256,25 @@ function Ladder({ladder_id}) {
   }
 
   
-  console.log(ladder)
+  //console.log(ladder)
+  
+  // Show loader if loading OR if ladder data doesn't match requested ladder_id (stale data)
+  // if (loadingLadder || !ladder || ladder._id !== Number(ladder_id)) {
+  //   return <Loader />
+  // }
+  
+  // Show error message if fetch failed
+  if (errorLadder) {
+    return <Message variant='danger'>{errorLadder}</Message>
+  }
+  
   return (
     <div style={{ position: 'relative' }}>
-      {loadingLadder && (
-
-          <Loader />
-      )}
       {deleteLoading && <Loader />}
       {deleteError && <Message variant='danger'>{deleteError}</Message>}
       {message && <Message variant='success'>{message}</Message>}
       {loadingLadderUpdate ? <Loader /> : errorLadderUpdate ? <Message variant='danger'>{errorLadderUpdate}</Message> : ''}
-      {errorLadder ? <Message variant='danger'>{errorLadder}</Message> : ladder && (
-        <>
+      <>
         <Modal show={showModal} onHide={handleClose} size="xl">
         <Modal.Header closeButton>
           <Modal.Title>Trade Suggestions</Modal.Title>
@@ -313,11 +319,11 @@ function Ladder({ladder_id}) {
              
               <GaugeGraph LADDER_DATA={ladder}/>
               <Card.Body className="p-2">
-                <Card.Title className="m-0"><h5>Daily Profit: ${Number(daily_profit).toFixed(2)} | Profit: ${Number(profit).toFixed(2)}</h5></Card.Title>
+                <Card.Title className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<><h5>Daily Profit: ${Number(daily_profit).toFixed(2)} | Profit: ${Number(profit).toFixed(2)}</h5></>)}</Card.Title>
               </Card.Body>
             </Card>
           </Col>
-          {market.toLowerCase() === 'stocks' && (
+          {/* {market.toLowerCase() === 'stocks' && (
           <Col>
           <Card className="mb-2 text-center " style={{ width: 'fit-content', margin: '0 auto' }}>
             <Card.Header>
@@ -342,15 +348,17 @@ function Ladder({ladder_id}) {
             </Card.Body>
           </Card>
           </Col>
-          )}
+          )} */}
           <Col>
             <Row><Col>
+            
               <Card md={4}  className="mb-2">
                 <Card.Header>
                   <Row>
-                    <Col><h5>{name}:</h5></Col> 
+                    <Col>{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<h5>{name}:</h5>)}</Col> 
                     
                     <Col xs={5} className="text-end">
+                    {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<>
                       <Form>
                         <Form.Group controlId='enable' style={{cursor: 'pointer'}}>
                             <Form.Check 
@@ -371,9 +379,9 @@ function Ladder({ladder_id}) {
                         .pointer-switch .form-check-input {
                           cursor: pointer !important;
                         }
-                      `}</style>
+                      `}</style></>)}
                     </Col>
-                    <Col xs={2}><Button variant='warning' className='p-1 mb-1' onClick={handleEditLadder}><i className="fas fa-edit"></i></Button></Col>
+                    <Col xs={2}>{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (<Button variant='warning' className='p-1 mb-1' onClick={handleEditLadder}><i className="fas fa-edit"></i></Button>)}</Col>
                   </Row> 
                 </Card.Header>
                 <ListGroup variant='flush' className="list-group-vertical">
@@ -381,25 +389,25 @@ function Ladder({ladder_id}) {
                   <ListGroup.Item className="p-0">
                     <Row className="g-0">
                     <Col lg={12} xl={5} className="px-2 py-1" style={{ backgroundColor: '#f0f0f0', borderRight:'1px solid darkgrey',color: 'black' }}>PRICE</Col>
-                    <Col className="px-2 py-1"><h5 className="m-0">${last}</h5></Col>
+                    <Col className="px-2 py-1"><h5 className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (`$${last}`)}</h5></Col>
                     </Row>
                     
                   </ListGroup.Item>
                   <ListGroup.Item className="p-0">
                     <Row className="g-0">
                     <Col lg={12} xl={5} className="px-2 py-1" style={{ backgroundColor: '#f0f0f0', borderRight:'1px solid darkgrey',color: 'black' }}>HIGHEST</Col>
-                    <Col className="px-2 py-1"><h5 className="m-0">${highest}</h5></Col>
+                    <Col className="px-2 py-1"><h5 className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (`$${highest}`)}</h5></Col>
                     </Row>
                   </ListGroup.Item>
                   <ListGroup.Item className="p-0">
                     <Row className="g-0">
                     <Col  lg={12} xl={5} className="px-2 py-1" style={{ backgroundColor: '#f0f0f0', borderRight:'1px solid darkgrey',color: 'black' }}>LOWEST</Col>
-                    <Col className="px-2 py-1"><h5 className="m-0">${lowest}</h5></Col>
+                    <Col className="px-2 py-1"><h5 className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (`$${lowest}`)}</h5></Col>
                     </Row>
                   </ListGroup.Item>
 
                 </ListGroup>
-                <Card.Footer className="text-center px-2 py-1">Last Ran: {lastRan}</Card.Footer>
+                <Card.Footer className="text-center px-2 py-1">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<>Last Ran: {lastRan}</>)}</Card.Footer>
                 </Card>
               </Col>
             </Row>
@@ -414,21 +422,25 @@ function Ladder({ladder_id}) {
           className="mb-3"
         >
           <Tab eventKey="home" title="Reports" >
-           
-            <LadderReport LADDER_DATA={ladder} />
+           {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
+            <LadderReport LADDER_DATA={ladder} />)}
           </Tab>
           <Tab eventKey="steps" title="Ladder Steps">
-            <LadderStepTab ladder={ladder} loading={loadingLadder} />
+            {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
+            <LadderStepTab ladder={ladder} loading={loadingLadder} />)}
           </Tab>
           <Tab eventKey="transactions" title="Ladder Transactions">
             <Row>
               <Col>
+              {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
+                <>
                 <TransactionsStats ladder={ladder} />
-                <TransactionsTable ladder={ladder} status='OPEN' />
+                <TransactionsTable ladder={ladder} status='OPEN' /></>)}
               </Col>
             </Row>
           </Tab>
           <Tab eventKey="details" title="Details">
+            {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
             <Card>
               <Card.Header>
                 <Row>
@@ -614,14 +626,13 @@ function Ladder({ladder_id}) {
                   </Col>
                 </Row>
               </Card.Body>
-            </Card>
+            </Card>)}
             </Tab>
             
         </Tabs>
         </Col>
       </Row>
       </>
-      )}
     </div>
   )
 }

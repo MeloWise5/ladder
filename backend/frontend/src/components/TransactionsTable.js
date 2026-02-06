@@ -276,7 +276,7 @@ function TransactionsTable({ladder=false, status}) {
                                           closed_transactions.step )}> Cancel Order</Button> : ''
                         )
                     }</td>
-                <td>{closed_transactions.sell_placed || ''}</td>
+                <td>{formatDate(closed_transactions.sell_placed) || ''}</td>
                 <td>{closed_transactions.sell_id || ''}</td>
                 <td>{closed_transactions.sell_price && !['',0,'0', null, undefined].includes(closed_transactions.sell_price) ? get_price(closed_transactions,'SELL') : '-'}</td>
                 <td>{closed_transactions.sell_fee || '-'}</td>

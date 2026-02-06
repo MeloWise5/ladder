@@ -493,7 +493,7 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_user(self, obj):
         user = obj.user
-        serializer = UserSerializer(user, many=False)
+        serializer = UserListSerializer(user, many=False)
         return serializer.data
     def get_transactions(self, obj):
         transactions = obj.transactions_set.all().exclude(status='CLOSED').order_by(F('sell_price').asc(nulls_last=True))
