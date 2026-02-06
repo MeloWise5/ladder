@@ -391,6 +391,12 @@ sudo cat /etc/nginx/conf.d/default.conf | grep proxy_pass
 #Tail Logs
 # Gunicorn
 tail -f gunicorn.log
+# Only restart gunicorn when:
+❌ React changes → No restart
+❌ collectstatic → No restart
+✅ settings.py changes → Restart
+✅ Django code changes (views, models, etc.) → Restart
+✅ .env changes → Restart
 
 ########################################
 # Conda

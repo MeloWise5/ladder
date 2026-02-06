@@ -3,8 +3,8 @@ from django.contrib.auth.models import User
 from django.db.models import F, Avg, Sum, Count, Q
 from rest_framework_simplejwt.tokens import RefreshToken
 from .models import Ladders, Steps, Transactions, APICredentials, Snapshot, Historical, Profile
-from datetime import datetime
-
+from datetime import datetime, timedelta, date
+import pytz
 # Helper function to parse timestamps
 def parse_timestamp(timestamp_value):
     """Parse timestamp from Unix timestamp (int/string) or ISO format"""
@@ -388,80 +388,69 @@ class LadderListSerializer(serializers.ModelSerializer):
         model = Ladders
         fields = ['_id', 'name', 'symbol', 'enable', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
-    def _get_today_timestamp_range(self):
-        """Private helper to get today's date range (start, end)"""
-        from datetime import datetime, timedelta
-        today = datetime.now().replace(hour=0, minute=0, second=0, microsecond=0)
-        tomorrow = today + timedelta(days=1)
-        return today, tomorrow
+    def _get_eastern_today_date(self):
+        """Get today's date in Eastern timezone"""
+        eastern = pytz.timezone('America/New_York')
+        now_eastern = datetime.now(eastern)
+        return now_eastern.date()
     
-    def _count_transactions_today(self, transactions, timestamp_field):
-        """Private helper to count transactions with timestamp in today's range"""
-        today_start, today_end = self._get_today_timestamp_range()
-        count = 0
+    def _parse_timestamp_to_eastern_date(self, timestamp_value):
+        """Parse timestamp and convert to Eastern timezone date"""
+        if not timestamp_value or timestamp_value == '0':
+            return None
         
-        for trans in transactions:
-            field_value = getattr(trans, timestamp_field, None)
-            if field_value and field_value != '0':
-                parsed_date = parse_timestamp(field_value)
-                if parsed_date:
-                    # Strip timezone for comparison
-                    if parsed_date.tzinfo is not None:
-                        parsed_date = parsed_date.replace(tzinfo=None)
-                    
-                    if today_start <= parsed_date < today_end:
-                        count += 1
-        return count
+        try:
+            eastern = pytz.timezone('America/New_York')
+            
+            # Try Unix timestamp first
+            try:
+                if isinstance(timestamp_value, str):
+                    timestamp = float(timestamp_value)
+                else:
+                    timestamp = float(timestamp_value)
+                
+                utc_dt = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
+                eastern_dt = utc_dt.astimezone(eastern)
+                return eastern_dt.date()
+            except ValueError:
+                # Not a Unix timestamp, try ISO format
+                if isinstance(timestamp_value, str):
+                    utc_dt = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
+                    if utc_dt.tzinfo is None:
+                        utc_dt = utc_dt.replace(tzinfo=pytz.UTC)
+                    eastern_dt = utc_dt.astimezone(eastern)
+                    return eastern_dt.date()
+                
+        except (ValueError, TypeError, OSError):
+            return None
+        
+        return None
 
     def get_closed_daily_transaction_count(self, obj):
-        from datetime import datetime, date
+        """Count closed transactions from today (Eastern time)"""
         transactions = obj.transactions_set.filter(status='CLOSED')
-        today = date.today()
+        today_eastern = self._get_eastern_today_date()
         count = 0
         
         for trans in transactions:
             if trans.sell_date and trans.sell_date != '0':
-                try:
-                    # Try as Unix timestamp first
-                    if isinstance(trans.sell_date, str):
-                        try:
-                            timestamp = float(trans.sell_date)
-                            trans_date = datetime.fromtimestamp(timestamp).date()
-                        except ValueError:
-                            # Try as ISO format
-                            trans_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00')).date()
-                    else:
-                        timestamp = float(trans.sell_date)
-                        trans_date = datetime.fromtimestamp(timestamp).date()
-                    
-                    if trans_date == today:
-                        count += 1
-                except (ValueError, TypeError, OSError):
-                    continue
+                trans_date = self._parse_timestamp_to_eastern_date(trans.sell_date)
+                if trans_date and trans_date == today_eastern:
+                    count += 1
         
         return count
     
     def get_open_daily_transaction_count(self, obj):
-        from datetime import datetime, date
+        """Count open transactions placed today (Eastern time)"""
         transactions = obj.transactions_set.exclude(status='CLOSED')
-        today = date.today()
+        today_eastern = self._get_eastern_today_date()
         count = 0
         
         for trans in transactions:
             if trans.buy_placed and trans.buy_placed != '0':
-                try:
-                    # Parse the timestamp
-                    if isinstance(trans.buy_placed, str):
-                        timestamp = float(trans.buy_placed)
-                    else:
-                        timestamp = trans.buy_placed
-                    
-                    # Convert to date and compare
-                    trans_date = datetime.fromtimestamp(timestamp).date()
-                    if trans_date == today:
-                        count += 1
-                except (ValueError, TypeError, OSError):
-                    continue
+                trans_date = self._parse_timestamp_to_eastern_date(trans.buy_placed)
+                if trans_date and trans_date == today_eastern:
+                    count += 1
         
         return count
 
