@@ -370,6 +370,9 @@ sudo certbot --nginx -d ladder.melowise.com
 
 # DNS propgation delay, this might take like 5 to 30min. 
 
+
+
+#####################################################  UPDATE WITH NEW CODE. 
 # how to update with new code. 
 ###### git hub deploy
 cd /home/melowisev/site/ladder
@@ -377,15 +380,10 @@ git reset --hard origin/main
 sudo killall gunicorn
 cd backend/ladder
 nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
-
-# no matter what you do, if there is a achnge you have to restart gunicorn. 
-# gunicorn create a instance in memeory and djanog only reads the f.env and setting.py files once. 
-sudo killall gunicorn
-cd backend/ladder
-nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
+python manage.py collectstatic --noinput
 
 NOTE::::
-# Make sure the ngix port and teh gunicorn bind port are the same. 
+# Make sure the ngix port and the gunicorn bind port are the same. 
 sudo cat /etc/nginx/conf.d/default.conf | grep proxy_pass
 
 #Tail Logs

@@ -163,8 +163,6 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_avg_buy_days(self, obj):
         """Calculate average days between buy_placed and buy_date for closed transactions"""
-        from datetime import datetime
-        
         ladders = obj.ladders_set.all()
         closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
         total_days = 0
@@ -184,8 +182,6 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_avg_sell_days(self, obj):
         """Calculate average days between sell_placed and sell_date for closed transactions"""
-        from datetime import datetime
-        
         ladders = obj.ladders_set.all()
         closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
         total_days = 0
@@ -223,8 +219,6 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_avg_trades_per_day(self, obj):
         """Calculate average number of closed trades per day"""
-        from datetime import datetime
-        
         ladders = obj.ladders_set.all()
         closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
         count = closed_transactions.count()
@@ -251,8 +245,6 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_avg_profit_per_day(self, obj):
         """Calculate average profit per day for closed transactions"""
-        from datetime import datetime
-        
         ladders = obj.ladders_set.all()
         closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
         total_profit = sum(float(t.profit) for t in closed_transactions if t.profit)
@@ -279,7 +271,6 @@ class UserSerializer(serializers.ModelSerializer):
     
     def get_top_5_days_by_profit(self, obj):
         """Get top 5 days with the most profit from closed transactions"""
-        from datetime import datetime
         from collections import defaultdict
         
         ladders = obj.ladders_set.all()
@@ -388,19 +379,31 @@ class LadderListSerializer(serializers.ModelSerializer):
         model = Ladders
         fields = ['_id', 'name', 'symbol', 'enable', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
-    def _get_eastern_today_date(self):
-        """Get today's date in Eastern timezone"""
-        eastern = pytz.timezone('America/New_York')
-        now_eastern = datetime.now(eastern)
-        return now_eastern.date()
+    def _get_user_timezone(self):
+        """Get the user's timezone from their profile"""
+        try:
+            # Get the user from the ladder's user field
+            user = self.context.get('request').user if self.context.get('request') else None
+            if user and hasattr(user, 'profile'):
+                return pytz.timezone(user.profile.timezone)
+        except Exception:
+            pass
+        # Default to Pacific if no timezone is set
+        return pytz.timezone('America/Los_Angeles')
     
-    def _parse_timestamp_to_eastern_date(self, timestamp_value):
-        """Parse timestamp and convert to Eastern timezone date"""
+    def _get_local_today_date(self):
+        """Get today's date in user's timezone"""
+        user_tz = self._get_user_timezone()
+        now_local = datetime.now(user_tz)
+        return now_local.date()
+    
+    def _parse_timestamp_to_local_date(self, timestamp_value):
+        """Parse timestamp and convert to user's timezone date"""
         if not timestamp_value or timestamp_value == '0':
             return None
         
         try:
-            eastern = pytz.timezone('America/New_York')
+            user_tz = self._get_user_timezone()
             
             # Try Unix timestamp first
             try:
@@ -410,16 +413,16 @@ class LadderListSerializer(serializers.ModelSerializer):
                     timestamp = float(timestamp_value)
                 
                 utc_dt = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
-                eastern_dt = utc_dt.astimezone(eastern)
-                return eastern_dt.date()
+                local_dt = utc_dt.astimezone(user_tz)
+                return local_dt.date()
             except ValueError:
                 # Not a Unix timestamp, try ISO format
                 if isinstance(timestamp_value, str):
                     utc_dt = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
                     if utc_dt.tzinfo is None:
                         utc_dt = utc_dt.replace(tzinfo=pytz.UTC)
-                    eastern_dt = utc_dt.astimezone(eastern)
-                    return eastern_dt.date()
+                    local_dt = utc_dt.astimezone(user_tz)
+                    return local_dt.date()
                 
         except (ValueError, TypeError, OSError):
             return None
@@ -427,29 +430,29 @@ class LadderListSerializer(serializers.ModelSerializer):
         return None
 
     def get_closed_daily_transaction_count(self, obj):
-        """Count closed transactions from today (Eastern time)"""
+        """Count closed transactions from today (local time)"""
         transactions = obj.transactions_set.filter(status='CLOSED')
-        today_eastern = self._get_eastern_today_date()
+        today_local = self._get_local_today_date()
         count = 0
         
         for trans in transactions:
             if trans.sell_date and trans.sell_date != '0':
-                trans_date = self._parse_timestamp_to_eastern_date(trans.sell_date)
-                if trans_date and trans_date == today_eastern:
+                trans_date = self._parse_timestamp_to_local_date(trans.sell_date)
+                if trans_date and trans_date == today_local:
                     count += 1
         
         return count
     
     def get_open_daily_transaction_count(self, obj):
-        """Count open transactions placed today (Eastern time)"""
+        """Count open transactions placed today (local time)"""
         transactions = obj.transactions_set.exclude(status='CLOSED')
-        today_eastern = self._get_eastern_today_date()
+        today_local = self._get_local_today_date()
         count = 0
         
         for trans in transactions:
             if trans.buy_placed and trans.buy_placed != '0':
-                trans_date = self._parse_timestamp_to_eastern_date(trans.buy_placed)
-                if trans_date and trans_date == today_eastern:
+                trans_date = self._parse_timestamp_to_local_date(trans.buy_placed)
+                if trans_date and trans_date == today_local:
                     count += 1
         
         return count
@@ -560,8 +563,6 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_avg_sell_days(self, obj):
         """Calculate average days between sell_placed and sell_date for closed transactions"""
-        from datetime import datetime
-        
         closed_transactions = obj.transactions_set.filter(status='CLOSED')
         total_days = 0
         count = 0
@@ -598,8 +599,6 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_avg_trades_per_day(self, obj):
         """Calculate average number of closed trades per day"""
-        from datetime import datetime
-        
         closed_transactions = obj.transactions_set.filter(status='CLOSED')
         count = closed_transactions.count()
         
@@ -636,8 +635,6 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_avg_profit_per_day(self, obj):
         """Calculate average profit per day for closed transactions"""
-        from datetime import datetime
-        
         closed_transactions = obj.transactions_set.filter(status='CLOSED')
         total_profit = sum(float(t.profit) for t in closed_transactions if t.profit)
         
@@ -674,7 +671,6 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_top_5_days_by_profit(self, obj):
         """Get top 5 days with the most profit from closed transactions"""
-        from datetime import datetime
         from collections import defaultdict
         
         closed_transactions = obj.transactions_set.filter(status='CLOSED')

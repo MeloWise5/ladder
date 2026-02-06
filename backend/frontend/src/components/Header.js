@@ -69,7 +69,7 @@ function Header() {
               <LinkContainer to="/admin/ladderList"><NavDropdown.Item>View Ladders</NavDropdown.Item></LinkContainer>
             </NavDropdown>)}
           </Nav>
-          <Form className="d-flex">
+          {/* <Form className="d-flex">
             <Form.Control
               type="search"
               placeholder="Search"
@@ -77,7 +77,7 @@ function Header() {
               aria-label="Search"
             />
             <Button variant="outline-success">Search</Button>
-          </Form>
+          </Form> */}
         </Navbar.Collapse>
       </Container>
     </Navbar>
