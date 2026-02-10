@@ -7,24 +7,32 @@ from datetime import datetime, timedelta, date
 import pytz
 # Helper function to parse timestamps
 def parse_timestamp(timestamp_value):
-    """Parse timestamp from Unix timestamp (int/string) or ISO format"""
+    """Parse timestamp from Unix timestamp (int/string) or ISO format - ALWAYS returns timezone-aware datetime"""
     if not timestamp_value or timestamp_value == '0' or timestamp_value == 0:
         return None
     
+    eastern = pytz.timezone('America/New_York')
+    
     try:
         if isinstance(timestamp_value, datetime):
+            # If already a datetime, ensure it's timezone-aware
+            if timestamp_value.tzinfo is None:
+                return eastern.localize(timestamp_value)
             return timestamp_value
         
         if isinstance(timestamp_value, (int, float)):
-            return datetime.fromtimestamp(timestamp_value)
+            # Convert Unix timestamp to timezone-aware datetime
+            return datetime.fromtimestamp(timestamp_value, tz=eastern)
         
         if isinstance(timestamp_value, str):
             try:
-                return datetime.fromtimestamp(float(timestamp_value))
+                # Try Unix timestamp string first
+                return datetime.fromtimestamp(float(timestamp_value), tz=eastern)
             except (ValueError, TypeError):
                 pass
             
             try:
+                # Try ISO format
                 return datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
             except (ValueError, TypeError):
                 pass
@@ -189,31 +197,13 @@ class UserSerializer(serializers.ModelSerializer):
         
         for trans in closed_transactions:
             if trans.sell_placed and trans.sell_date and trans.sell_placed != '0' and trans.sell_date != '0':
-                try:
-                    # Try parsing as ISO format first
-                    if isinstance(trans.sell_placed, str):
-                        sell_placed = datetime.fromisoformat(trans.sell_placed.replace('Z', '+00:00'))
-                    else:
-                        sell_placed = trans.sell_placed
-                    
-                    if isinstance(trans.sell_date, str):
-                        sell_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00'))
-                    else:
-                        sell_date = trans.sell_date
-                    
+                sell_placed = parse_timestamp(trans.sell_placed)
+                sell_date = parse_timestamp(trans.sell_date)
+                
+                if sell_placed and sell_date:
                     days = (sell_date - sell_placed).days
                     total_days += days
                     count += 1
-                except (ValueError, AttributeError):
-                    # Try as Unix timestamp
-                    try:
-                        sell_placed = datetime.fromtimestamp(float(trans.sell_placed))
-                        sell_date = datetime.fromtimestamp(float(trans.sell_date))
-                        days = (sell_date - sell_placed).days
-                        total_days += days
-                        count += 1
-                    except:
-                        continue
         
         return round(total_days / count, 2) if count > 0 else 0.0
     
@@ -231,14 +221,25 @@ class UserSerializer(serializers.ModelSerializer):
             if trans.sell_date and trans.sell_date != '0':
                 sell_date = parse_timestamp(trans.sell_date)
                 if sell_date:
+                    # DEBUG: Log datetime info to identify naive datetimes
+                    if sell_date.tzinfo is None:
+                        print(f"[DEBUG] NAIVE datetime found! Transaction ID: {trans.id}, sell_date raw: {trans.sell_date}, parsed: {sell_date}")
                     dates.append(sell_date)
         
         if len(dates) < 2:
             return 0.0
         
         # Calculate days between earliest and latest transaction
-        earliest = min(dates)
-        latest = max(dates)
+        try:
+            earliest = min(dates)
+            latest = max(dates)
+        except TypeError as e:
+            # If comparison fails, log all dates for debugging
+            print(f"[ERROR] DateTime comparison failed in get_avg_trades_per_day for user {obj.id}")
+            for i, dt in enumerate(dates):
+                print(f"  Date {i}: {dt} | Type: {type(dt)} | TZ: {dt.tzinfo}")
+            raise
+        
         total_days = (latest - earliest).days + 1  # +1 to include both start and end day
         
         return round(count / total_days, 2) if total_days > 0 else 0.0
@@ -263,8 +264,15 @@ class UserSerializer(serializers.ModelSerializer):
             return 0.0
         
         # Calculate days between earliest and latest transaction
-        earliest = min(dates)
-        latest = max(dates)
+        try:
+            earliest = min(dates)
+            latest = max(dates)
+        except TypeError as e:
+            print(f"[ERROR] DateTime comparison failed in get_avg_profit_per_day for user {obj.id}")
+            for i, dt in enumerate(dates):
+                print(f"  Date {i}: {dt} | Type: {type(dt)} | TZ: {dt.tzinfo}")
+            raise
+        
         total_days = (latest - earliest).days + 1  # +1 to include both start and end day
         
         return round(total_profit / total_days, 2) if total_days > 0 else 0.0
@@ -279,23 +287,10 @@ class UserSerializer(serializers.ModelSerializer):
         
         for trans in closed_transactions:
             if trans.sell_date and trans.sell_date != '0' and trans.profit:
-                try:
-                    # Try parsing as ISO format first
-                    if isinstance(trans.sell_date, str):
-                        sell_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00'))
-                    else:
-                        sell_date = trans.sell_date
-                    
+                sell_date = parse_timestamp(trans.sell_date)
+                if sell_date:
                     date_key = sell_date.strftime('%Y-%m-%d')
                     daily_profit[date_key] += float(trans.profit)
-                except (ValueError, AttributeError):
-                    # Try as Unix timestamp
-                    try:
-                        sell_date = datetime.fromtimestamp(float(trans.sell_date))
-                        date_key = sell_date.strftime('%Y-%m-%d')
-                        daily_profit[date_key] += float(trans.profit)
-                    except:
-                        continue
         
         # Sort by profit descending and take top 5
         top_5 = sorted(daily_profit.items(), key=lambda x: x[1], reverse=True)[:5]
@@ -379,31 +374,19 @@ class LadderListSerializer(serializers.ModelSerializer):
         model = Ladders
         fields = ['_id', 'name', 'symbol', 'enable', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
-    def _get_user_timezone(self):
-        """Get the user's timezone from their profile"""
-        try:
-            # Get the user from the ladder's user field
-            user = self.context.get('request').user if self.context.get('request') else None
-            if user and hasattr(user, 'profile'):
-                return pytz.timezone(user.profile.timezone)
-        except Exception:
-            pass
-        # Default to Pacific if no timezone is set
-        return pytz.timezone('America/Los_Angeles')
+    def _get_eastern_today_date(self):
+        """Get today's date in Eastern timezone"""
+        eastern = pytz.timezone('America/New_York')
+        now_eastern = datetime.now(eastern)
+        return now_eastern.date()
     
-    def _get_local_today_date(self):
-        """Get today's date in user's timezone"""
-        user_tz = self._get_user_timezone()
-        now_local = datetime.now(user_tz)
-        return now_local.date()
-    
-    def _parse_timestamp_to_local_date(self, timestamp_value):
-        """Parse timestamp and convert to user's timezone date"""
+    def _parse_timestamp_to_eastern_date(self, timestamp_value):
+        """Parse timestamp and convert to Eastern timezone date"""
         if not timestamp_value or timestamp_value == '0':
             return None
         
         try:
-            user_tz = self._get_user_timezone()
+            eastern = pytz.timezone('America/New_York')
             
             # Try Unix timestamp first
             try:
@@ -413,16 +396,16 @@ class LadderListSerializer(serializers.ModelSerializer):
                     timestamp = float(timestamp_value)
                 
                 utc_dt = datetime.utcfromtimestamp(timestamp).replace(tzinfo=pytz.UTC)
-                local_dt = utc_dt.astimezone(user_tz)
-                return local_dt.date()
+                eastern_dt = utc_dt.astimezone(eastern)
+                return eastern_dt.date()
             except ValueError:
                 # Not a Unix timestamp, try ISO format
                 if isinstance(timestamp_value, str):
                     utc_dt = datetime.fromisoformat(timestamp_value.replace('Z', '+00:00'))
                     if utc_dt.tzinfo is None:
                         utc_dt = utc_dt.replace(tzinfo=pytz.UTC)
-                    local_dt = utc_dt.astimezone(user_tz)
-                    return local_dt.date()
+                    eastern_dt = utc_dt.astimezone(eastern)
+                    return eastern_dt.date()
                 
         except (ValueError, TypeError, OSError):
             return None
@@ -430,29 +413,29 @@ class LadderListSerializer(serializers.ModelSerializer):
         return None
 
     def get_closed_daily_transaction_count(self, obj):
-        """Count closed transactions from today (local time)"""
+        """Count closed transactions from today (Eastern time)"""
         transactions = obj.transactions_set.filter(status='CLOSED')
-        today_local = self._get_local_today_date()
+        today_eastern = self._get_eastern_today_date()
         count = 0
         
         for trans in transactions:
             if trans.sell_date and trans.sell_date != '0':
-                trans_date = self._parse_timestamp_to_local_date(trans.sell_date)
-                if trans_date and trans_date == today_local:
+                trans_date = self._parse_timestamp_to_eastern_date(trans.sell_date)
+                if trans_date and trans_date == today_eastern:
                     count += 1
         
         return count
     
     def get_open_daily_transaction_count(self, obj):
-        """Count open transactions placed today (local time)"""
+        """Count open transactions placed today (Eastern time)"""
         transactions = obj.transactions_set.exclude(status='CLOSED')
-        today_local = self._get_local_today_date()
+        today_eastern = self._get_eastern_today_date()
         count = 0
         
         for trans in transactions:
             if trans.buy_placed and trans.buy_placed != '0':
-                trans_date = self._parse_timestamp_to_local_date(trans.buy_placed)
-                if trans_date and trans_date == today_local:
+                trans_date = self._parse_timestamp_to_eastern_date(trans.buy_placed)
+                if trans_date and trans_date == today_eastern:
                     count += 1
         
         return count
@@ -505,9 +488,14 @@ class LadderSerializer(serializers.ModelSerializer):
 
     
     def get_snapshot(self, obj):
-        """Get the latest snapshot for this ladder"""
+        """Get today's snapshot for this ladder (Eastern time)"""
         try:
-            snapshot = obj.snapshot_set.latest('date')
+            eastern = pytz.timezone('America/New_York')
+            now_eastern = datetime.now(eastern)
+            today_eastern = now_eastern.date()
+            
+            # Filter for today's snapshot (Eastern time zone)
+            snapshot = obj.snapshot_set.filter(date=today_eastern).latest('date')
             serializer = SnapshotSerializer(snapshot, many=False)
             return serializer.data
         except Snapshot.DoesNotExist:
@@ -525,39 +513,19 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_avg_buy_days(self, obj):
         """Calculate average days between buy_placed and buy_date for closed transactions"""
-        
-        
         closed_transactions = obj.transactions_set.filter(status='CLOSED')
         total_days = 0
         count = 0
         
         for trans in closed_transactions:
             if trans.buy_placed and trans.buy_date and trans.buy_placed != '0' and trans.buy_date != '0':
-                try:
-                    # Try parsing as ISO format first
-                    if isinstance(trans.buy_placed, str):
-                        buy_placed = datetime.fromisoformat(trans.buy_placed.replace('Z', '+00:00'))
-                    else:
-                        buy_placed = trans.buy_placed
-                    
-                    if isinstance(trans.buy_date, str):
-                        buy_date = datetime.fromisoformat(trans.buy_date.replace('Z', '+00:00'))
-                    else:
-                        buy_date = trans.buy_date
-                    
+                buy_placed = parse_timestamp(trans.buy_placed)
+                buy_date = parse_timestamp(trans.buy_date)
+                
+                if buy_placed and buy_date:
                     days = (buy_date - buy_placed).days
                     total_days += days
                     count += 1
-                except (ValueError, AttributeError):
-                    # Try as Unix timestamp
-                    try:
-                        buy_placed = datetime.fromtimestamp(float(trans.buy_placed))
-                        buy_date = datetime.fromtimestamp(float(trans.buy_date))
-                        days = (buy_date - buy_placed).days
-                        total_days += days
-                        count += 1
-                    except:
-                        continue
         
         return round(total_days / count, 2) if count > 0 else 0.0
     
@@ -569,31 +537,13 @@ class LadderSerializer(serializers.ModelSerializer):
         
         for trans in closed_transactions:
             if trans.sell_placed and trans.sell_date and trans.sell_placed != '0' and trans.sell_date != '0':
-                try:
-                    # Try parsing as ISO format first
-                    if isinstance(trans.sell_placed, str):
-                        sell_placed = datetime.fromisoformat(trans.sell_placed.replace('Z', '+00:00'))
-                    else:
-                        sell_placed = trans.sell_placed
-                    
-                    if isinstance(trans.sell_date, str):
-                        sell_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00'))
-                    else:
-                        sell_date = trans.sell_date
-                    
+                sell_placed = parse_timestamp(trans.sell_placed)
+                sell_date = parse_timestamp(trans.sell_date)
+                
+                if sell_placed and sell_date:
                     days = (sell_date - sell_placed).days
                     total_days += days
                     count += 1
-                except (ValueError, AttributeError):
-                    # Try as Unix timestamp
-                    try:
-                        sell_placed = datetime.fromtimestamp(float(trans.sell_placed))
-                        sell_date = datetime.fromtimestamp(float(trans.sell_date))
-                        days = (sell_date - sell_placed).days
-                        total_days += days
-                        count += 1
-                    except:
-                        continue
         
         return round(total_days / count, 2) if count > 0 else 0.0
     
@@ -608,27 +558,27 @@ class LadderSerializer(serializers.ModelSerializer):
         dates = []
         for trans in closed_transactions:
             if trans.sell_date and trans.sell_date != '0':
-                try:
-                    # Try parsing as ISO format first
-                    if isinstance(trans.sell_date, str):
-                        sell_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00'))
-                    else:
-                        sell_date = trans.sell_date
+                sell_date = parse_timestamp(trans.sell_date)
+                if sell_date:
+                    # DEBUG: Log datetime info to identify naive datetimes
+                    if sell_date.tzinfo is None:
+                        print(f"[DEBUG] NAIVE datetime found! Transaction ID: {trans.id}, sell_date raw: {trans.sell_date}, parsed: {sell_date}")
                     dates.append(sell_date)
-                except (ValueError, AttributeError):
-                    # Try as Unix timestamp
-                    try:
-                        sell_date = datetime.fromtimestamp(float(trans.sell_date))
-                        dates.append(sell_date)
-                    except:
-                        continue
         
         if len(dates) < 2:
             return 0.0
         
         # Calculate days between earliest and latest transaction
-        earliest = min(dates)
-        latest = max(dates)
+        try:
+            earliest = min(dates)
+            latest = max(dates)
+        except TypeError as e:
+            # If comparison fails, log all dates for debugging
+            print(f"[ERROR] DateTime comparison failed in get_avg_trades_per_day for ladder {obj.id}")
+            for i, dt in enumerate(dates):
+                print(f"  Date {i}: {dt} | Type: {type(dt)} | TZ: {dt.tzinfo}")
+            raise
+        
         total_days = (latest - earliest).days + 1  # +1 to include both start and end day
         
         return round(count / total_days, 2) if total_days > 0 else 0.0
@@ -644,27 +594,23 @@ class LadderSerializer(serializers.ModelSerializer):
         dates = []
         for trans in closed_transactions:
             if trans.sell_date and trans.sell_date != '0':
-                try:
-                    # Try parsing as ISO format first
-                    if isinstance(trans.sell_date, str):
-                        sell_date = datetime.fromisoformat(trans.sell_date.replace('Z', '+00:00'))
-                    else:
-                        sell_date = trans.sell_date
+                sell_date = parse_timestamp(trans.sell_date)
+                if sell_date:
                     dates.append(sell_date)
-                except (ValueError, AttributeError):
-                    # Try as Unix timestamp
-                    try:
-                        sell_date = datetime.fromtimestamp(float(trans.sell_date))
-                        dates.append(sell_date)
-                    except:
-                        continue
         
         if len(dates) < 2:
             return 0.0
         
         # Calculate days between earliest and latest transaction
-        earliest = min(dates)
-        latest = max(dates)
+        try:
+            earliest = min(dates)
+            latest = max(dates)
+        except TypeError as e:
+            print(f"[ERROR] DateTime comparison failed in get_avg_profit_per_day for ladder {obj.id}")
+            for i, dt in enumerate(dates):
+                print(f"  Date {i}: {dt} | Type: {type(dt)} | TZ: {dt.tzinfo}")
+            raise
+        
         total_days = (latest - earliest).days + 1  # +1 to include both start and end day
         
         return round(total_profit / total_days, 2) if total_days > 0 else 0.0

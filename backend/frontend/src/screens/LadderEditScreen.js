@@ -156,7 +156,7 @@ function LadderEditScreen() {
       })
     );
 
-    const from = location.state?.from || "/ladder/";
+    const from = location.state?.from || "/";
     navigate(from);
   };
 
@@ -251,7 +251,7 @@ function LadderEditScreen() {
         ""
       )}
 
-      <Link to="/admin/ladderlist" className="btn btn-light my-3">
+      <Link to="/" className="btn btn-light my-3">
         Go Back
       </Link>
       <FormContainer>

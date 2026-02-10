@@ -376,6 +376,7 @@ sudo certbot --nginx -d ladder.melowise.com
 # how to update with new code. 
 ###### git hub deploy
 cd /home/melowisev/site/ladder
+git fetch origin
 git reset --hard origin/main
 sudo killall gunicorn
 cd backend/ladder
