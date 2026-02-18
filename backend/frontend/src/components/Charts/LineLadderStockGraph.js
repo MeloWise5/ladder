@@ -43,6 +43,64 @@ export default function LineLadderStockGraph({ SYMBOL,DATE_METHOD }) {
     };
     
     const pointSizes = calculatePointSizes(historicalData);
+
+    const parseDateValue = (value) => {
+        if (value === null || value === undefined) return null;
+
+        if (value instanceof Date) {
+            return Number.isNaN(value.getTime()) ? null : value;
+        }
+
+        if (typeof value === 'number') {
+            const timestampMs = Math.abs(value) < 1000000000000 ? value * 1000 : value;
+            const parsedFromNumber = new Date(timestampMs);
+            return Number.isNaN(parsedFromNumber.getTime()) ? null : parsedFromNumber;
+        }
+
+        if (typeof value === 'string') {
+            const trimmedValue = value.trim();
+            if (!trimmedValue) return null;
+
+            if (/^-?\d+(\.\d+)?$/.test(trimmedValue)) {
+                const numericValue = Number(trimmedValue);
+                const timestampMs = Math.abs(numericValue) < 1000000000000 ? numericValue * 1000 : numericValue;
+                const parsedFromTimestamp = new Date(timestampMs);
+                return Number.isNaN(parsedFromTimestamp.getTime()) ? null : parsedFromTimestamp;
+            }
+
+            const parsedFromString = new Date(trimmedValue);
+            if (!Number.isNaN(parsedFromString.getTime())) {
+                return parsedFromString;
+            }
+        }
+
+        return null;
+    };
+
+    const getDateKey = (value) => {
+        if (typeof value === 'string') {
+            const trimmedValue = value.trim();
+            if (!trimmedValue) return '';
+
+            if (/^-?\d+(\.\d+)?$/.test(trimmedValue)) {
+                const parsedDate = parseDateValue(trimmedValue);
+                return parsedDate ? parsedDate.toISOString().split('T')[0] : trimmedValue;
+            }
+
+            if (trimmedValue.includes('T')) {
+                return trimmedValue.split('T')[0];
+            }
+
+            if (trimmedValue.includes(' ')) {
+                return trimmedValue.split(' ')[0];
+            }
+
+            return trimmedValue;
+        }
+
+        const parsedDate = parseDateValue(value);
+        return parsedDate ? parsedDate.toISOString().split('T')[0] : '';
+    };
     
     // Process historical data for main line
     const processHistoricalData = (historical) => {
@@ -64,7 +122,7 @@ export default function LineLadderStockGraph({ SYMBOL,DATE_METHOD }) {
         const sizes = [];
         
         historical.forEach((item, index) => {
-            const dateLabel = item.date.split('T')[0] || item.date;
+            const dateLabel = getDateKey(item.date) || String(item.date || '');
             labels.push(dateLabel);
             close.push(parseFloat(item.close));
             high.push(parseFloat(item.high));
@@ -91,27 +149,30 @@ export default function LineLadderStockGraph({ SYMBOL,DATE_METHOD }) {
         const sellPoints = [];
         const sellSizes = [];
         const sellFullData = [];
+
+        const historicalDateIndexMap = new Map();
+        historicalData.forEach((item, index) => {
+            const dateKey = getDateKey(item.date);
+            if (dateKey && !historicalDateIndexMap.has(dateKey)) {
+                historicalDateIndexMap.set(dateKey, index);
+            }
+        });
         
         transactions.forEach(trans => {
             // Parse the transaction date - just use the date portion
-            const transDateStr = trans.date.split('T')[0] || trans.date.split(' ')[0];
+            const transDateStr = getDateKey(trans.date);
             
             // Find the index in historical data for this date
-            let xPosition = -1;
-            for (let i = 0; i < historicalData.length; i++) {
-                const histDateStr = historicalData[i].date.split('T')[0] || historicalData[i].date.split(' ')[0];
-                if (histDateStr === transDateStr) {
-                    xPosition = i;
-                    break;
-                }
-            }
+            const xPosition = historicalDateIndexMap.has(transDateStr)
+                ? historicalDateIndexMap.get(transDateStr)
+                : -1;
             
             // If we found the date, calculate time offset within the day
             if (xPosition >= 0) {
                 // Parse the full datetime to get hour and minute (use local time, not UTC)
-                const transDate = new Date(trans.date);
-                const hours = transDate.getHours();
-                const minutes = transDate.getMinutes();
+                const transDate = parseDateValue(trans.date);
+                const hours = transDate ? transDate.getHours() : 0;
+                const minutes = transDate ? transDate.getMinutes() : 0;
                 
                 // Calculate percentage of day (0.0 to 1.0)
                 const timeOffset = (hours + minutes / 60) / 24;
