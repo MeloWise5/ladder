@@ -5,7 +5,8 @@ import {
     LADDER_DELETE_REQUEST, LADDER_DELETE_SUCCESS, LADDER_DELETE_FAIL, LADDER_DELETE_RESET,
     LADDER_CREATE_REQUEST, LADDER_CREATE_SUCCESS, LADDER_CREATE_FAIL, LADDER_CREATE_RESET,
     LADDER_UPDATE_FAIL, LADDER_UPDATE_SUCCESS, LADDER_UPDATE_REQUEST, LADDER_UPDATE_RESET,
-    LADDER_UPDATE_ENABLED_FAIL, LADDER_UPDATE_ENABLED_REQUEST, LADDER_UPDATE_ENABLED_SUCCESS, LADDER_UPDATE_ENABLED_RESET
+    LADDER_UPDATE_ENABLED_FAIL, LADDER_UPDATE_ENABLED_REQUEST, LADDER_UPDATE_ENABLED_SUCCESS, LADDER_UPDATE_ENABLED_RESET,
+    LADDER_UPDATE_ALERT_FAIL, LADDER_UPDATE_ALERT_REQUEST, LADDER_UPDATE_ALERT_SUCCESS, LADDER_UPDATE_ALERT_RESET,
 } from '../constants/ladderConstants'
 
 export const ladderListReducer = (state = { ladders: [] }, action) => {
@@ -102,6 +103,20 @@ export const ladderUpdateEnabledReducer = (state = {}, action) => {
         case LADDER_UPDATE_ENABLED_FAIL:
             return { loading: false, error: action.payload }
         case LADDER_UPDATE_ENABLED_RESET:
+            return {}
+        default:
+            return state
+    }
+}
+export const ladderUpdateAlertReducer = (state = {}, action) => {
+    switch (action.type) {
+        case LADDER_UPDATE_ALERT_REQUEST:
+            return { loading: true }
+        case LADDER_UPDATE_ALERT_SUCCESS:
+            return { loading: false, success: true, ladder: action.payload }
+        case LADDER_UPDATE_ALERT_FAIL:
+            return { loading: false, error: action.payload }
+        case LADDER_UPDATE_ALERT_RESET:
             return {}
         default:
             return state

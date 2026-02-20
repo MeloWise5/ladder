@@ -44,8 +44,10 @@ function LadderEditScreen() {
   const [symbolName, setSymbolName] = useState("");
 
   const [name, setName] = useState("Sample Name");
+  
   const [amount_per_trade, setAmountPerTrade] = useState(0);
   const [budget, setBudget] = useState(0);
+  const [buffer_52_week, setBuffer52Week] = useState(0);
   const [cap, setCap] = useState(0);
   const [direction, setDirection] = useState("Both");
   const [enable, setEnable] = useState(false);
@@ -96,6 +98,7 @@ function LadderEditScreen() {
       setName(ladder.name);
       setAmountPerTrade(ladder?.amount_per_trade || 0);
       setBudget(ladder?.budget || 0);
+      setBuffer52Week(ladder?.buffer_52_week || 0);
       setCap(Math.floor(ladder?.cap || 0));
       setDirection(ladder.direction || "Both");
       setEnable(ladder?.enable || false);
@@ -142,6 +145,7 @@ function LadderEditScreen() {
         amount_per_trade,
         budget,
         cap,
+        buffer_52_week,
         direction,
         enable,
         gap,
@@ -675,6 +679,43 @@ function LadderEditScreen() {
                         type === "Fixed" ||
                         type === "Percentage"
                       }
+                    ></Form.Control>
+                    <InputGroup.Text>%</InputGroup.Text>
+                  </InputGroup>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Fade>
+          <hr></hr>
+          <h1 className="text-center">Features</h1>
+          <hr></hr>
+          <h5>52 Week Buffer</h5>
+          <hr></hr>
+          <Fade in={market === "Stocks" && priceVisible} unmountOnExit>
+            <Row className={`mt-3 transition-fade ${
+                market === "Stocks" ? "show" : ""
+              }`} >
+              <Col>
+                <p style={{color:'black', fontStyle:'italic'}}>
+                  This feautre stops the ladder from buying with in the 52 week high so you dont get stuck holding that 52 wekk high debt for 52 weeks. It is recommended to set the buffer to at least 5% to account for volatility. For stocks only. Enjoy.
+                </p>
+              </Col>
+              <Col>
+                <Form.Group controlId="buffer_52_week">
+                  <Form.Label>52 Week Buffer</Form.Label>
+                  <InputGroup className="mb-3">
+                    <Form.Control
+                      type="number"
+                      placeholder="Enter 52 week buffer in percentage"
+                      value={buffer_52_week}
+                      onChange={(e) => {
+                        const oneDigit = e.target.value.replace(/\D/g, "").slice(0, 1); // max 1 char
+                        setBuffer52Week(oneDigit === "" ? 0 : Number(oneDigit));
+                      }}
+                      min={0}
+                      max={9}
+                      step={1}
+                      disabled={ market === "Crypto" }
                     ></Form.Control>
                     <InputGroup.Text>%</InputGroup.Text>
                   </InputGroup>

@@ -15,5 +15,6 @@ urlpatterns = [
     path('update/<str:pk>/',views.updateLadder, name="update ladder"),
     path('delete/<str:pk>/',views.deleteLadder, name="delete ladder"),
     path('updateenabled/<str:pk>/',views.updateEnabledLadder, name="update enabled ladder"),
+    path('updatealert/<str:pk>/',views.updateAlertLadder, name="update alert ladder"),
     
 ]

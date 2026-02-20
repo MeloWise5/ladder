@@ -372,7 +372,7 @@ class LadderListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ladders
-        fields = ['_id', 'name', 'symbol', 'enable', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
+        fields = ['_id', 'name', 'symbol', 'enable', 'alert', 'profit', 'budget', 'debt', 'last','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
     def _get_eastern_today_date(self):
         """Get today's date in Eastern timezone"""
@@ -445,7 +445,7 @@ class LadderListAdminSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ladders
-        fields = ['_id', 'name','user_name', 'enable', 'symbol','symbol_name', 'market']
+        fields = ['_id', 'name','user_name', 'enable', 'alert', 'symbol','symbol_name', 'market']
     
     def get_user_name(self, obj):
         user_name = User.objects.get(id=obj.user.id).username

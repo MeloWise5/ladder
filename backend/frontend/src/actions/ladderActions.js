@@ -9,6 +9,7 @@ LADDER_CREATE_FAIL, LADDER_CREATE_REQUEST, LADDER_CREATE_SUCCESS, LADDER_CREATE_
 LADDER_UPDATE_FAIL, LADDER_UPDATE_REQUEST, LADDER_UPDATE_SUCCESS,
 LADDER_UPDATE_ENABLED_FAIL, LADDER_UPDATE_ENABLED_REQUEST, LADDER_UPDATE_ENABLED_SUCCESS,
 LADDER_BULK_CREATE_REQUEST, LADDER_BULK_CREATE_SUCCESS, LADDER_BULK_CREATE_FAIL,
+LADDER_UPDATE_ALERT_REQUEST, LADDER_UPDATE_ALERT_SUCCESS, LADDER_UPDATE_ALERT_FAIL,
 
 } from '../constants/ladderConstants'
 
@@ -240,6 +241,43 @@ export const updateEnabledLadder = (ladder) => async (dispatch, getState) => {
     } catch (error) {
         dispatch({
             type: LADDER_UPDATE_ENABLED_FAIL,
+            payload: error.response && error.response.data.detail ?
+                error.response.data.detail : error.message,
+        })
+    }       
+}
+export const updateAlertLadder = (ladderOrId, alertValue) => async (dispatch, getState) => {
+    try {
+        dispatch({ type: LADDER_UPDATE_ALERT_REQUEST })
+
+        const ladderId = typeof ladderOrId === 'object' ? ladderOrId._id : ladderOrId
+        const alert = typeof ladderOrId === 'object' && alertValue === undefined
+            ? ladderOrId.alert
+            : alertValue
+
+        const payload = { alert: alert || '' }
+
+        const {
+            userLogin: { userInfo },
+        } = getState()  
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',     
+                Authorization: `Bearer ${userInfo.token}`,
+            },
+        }
+        const { data } = await axios.put(`/api/ladders/updatealert/${ladderId}/`, payload, config)
+        dispatch({
+            type: LADDER_UPDATE_ALERT_SUCCESS,
+            payload: data
+        })
+        dispatch({
+            type: LADDER_DETAILS_SUCCESS,
+            payload: data
+        })
+    } catch (error) {
+        dispatch({
+            type: LADDER_UPDATE_ALERT_FAIL,
             payload: error.response && error.response.data.detail ?
                 error.response.data.detail : error.message,
         })

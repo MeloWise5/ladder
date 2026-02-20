@@ -133,6 +133,7 @@ def updateLadder(request, pk):
     ladder.name = data['name']
     ladder.amount_per_trade = float(data['amount_per_trade'])
     ladder.budget = float(data['budget'])
+    ladder.buffer_52_week = float(data['buffer_52_week'])
     ladder.cap = float(data['cap'])
     ladder.direction = data['direction']
     ladder.enable = data['enable']
@@ -159,6 +160,20 @@ def updateEnabledLadder(request, pk):
         data = request.data
         ladder = Ladders.objects.get(_id=pk)
         ladder.enable = data['enable']
+        ladder.save()
+
+        serializer = LadderSerializer(ladder, many=False)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response({'error': 'API call failed', 'details': str(e)}, status=500)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def updateAlertLadder(request, pk):
+    try:
+        data = request.data
+        ladder = Ladders.objects.get(_id=pk)
+        ladder.alert = data.get('alert', '')
         ladder.save()
 
         serializer = LadderSerializer(ladder, many=False)

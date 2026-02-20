@@ -8,8 +8,10 @@ import os
 class Ladders(models.Model):
     user = models.ForeignKey(User, on_delete=models.CASCADE, null=True, blank=True)
     name = models.CharField(max_length=255, null=True, blank=True)
+    alert = models.TextField(default='', blank=True)
     amount_per_trade = models.IntegerField(default=0, null=True, blank=True)
     budget = models.IntegerField(default=0, null=True, blank=True)
+    buffer_52_week = models.PositiveSmallIntegerField(default=0)
     cap = models.DecimalField(default=0,max_digits=12, decimal_places=2, null=True, blank=True) 
     cover = models.DecimalField(default=0,max_digits=12, decimal_places=2, null=True, blank=True) 
     debt = models.DecimalField(default=0,max_digits=12, decimal_places=2, null=True, blank=True) 

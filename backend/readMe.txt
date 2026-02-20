@@ -371,6 +371,9 @@ sudo certbot --nginx -d ladder.melowise.com
 # DNS propgation delay, this might take like 5 to 30min. 
 
 
+git add .
+git commit -m ""
+git push
 
 #####################################################  UPDATE WITH NEW CODE. 
 # how to update with new code. 

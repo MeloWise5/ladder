@@ -72,7 +72,7 @@ function HomeScreen() {
   }
   const ladder_list = ladders ? (
     ladders.map(ladder => {
-      //console.log(ladder)
+      console.log(ladder)
       const isSelected = ladderId === ladder._id
       const isSampleName = ladder.name === 'Sample Name'
       const isDisabled = !ladder.enable

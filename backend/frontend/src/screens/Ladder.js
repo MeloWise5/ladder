@@ -10,6 +10,7 @@ import TransactionsStats from '../components/TransactionsStats'
 import TransactionsTable from '../components/TransactionsTable'
 import Suggestions from '../components/Suggestions'
 import LadderStepTab from '../components/LadderStepTab';
+import LadderAlert from '../components/Ladder_Alert';
 import LadderReport from '../components/LadderReport';
 import {formatDate} from '../components/utilities';
 import { LADDER_UPDATE_RESET } from '../constants/ladderConstants';
@@ -41,6 +42,7 @@ function Ladder({ladder_id}) {
 
   const [id, setId] = useState(0)
   const [name, setName] = useState('Sample Name')
+  const [ladder_alert, setAlert] = useState('Sample Name')
   const [amount_per_trade, setAmountPerTrade] = useState(0)
   const [budget, setBudget] = useState(0)
   const [cap, setCap] = useState(0)
@@ -107,6 +109,7 @@ function Ladder({ladder_id}) {
   // Separate effect for updating state from ladder data (no dispatch, just state updates)
   useEffect(() => {
     if(ladder?.name && ladder?._id === Number(ladder_id)){
+      setAlert(ladder?.alert || '')
       setAmountPerTrade(ladder?.amount_per_trade || 0 )
       setBudget(ladder?.budget || 0)
       setCap(Math.floor(ladder?.cap || 0))
@@ -256,7 +259,7 @@ function Ladder({ladder_id}) {
   }
 
   
-  //console.log(ladder)
+  //console.log(ladder_alert)
   
   // Show loader if loading OR if ladder data doesn't match requested ladder_id (stale data)
   // if (loadingLadder || !ladder || ladder._id !== Number(ladder_id)) {
@@ -268,6 +271,7 @@ function Ladder({ladder_id}) {
     return <Message variant='danger'>{errorLadder}</Message>
   }
   
+
   return (
     <div style={{ position: 'relative' }}>
       {deleteLoading && <Loader />}
@@ -308,7 +312,9 @@ function Ladder({ladder_id}) {
           </Button>
         </Modal.Footer>
       </Modal>
-      
+      <Row>
+        <LadderAlert ladder_id={id} ladder_alert={ladder_alert} />
+      </Row>
       <Row>
         <Col>
         <Row>

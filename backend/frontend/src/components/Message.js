@@ -1,8 +1,8 @@
 import React from 'react'
 import { Alert } from 'react-bootstrap'
-function Message({ variant, children }) {
+function Message({ variant, children, dismissible = false, onClose }) {
   return (
-    <Alert variant={variant}>
+    <Alert variant={variant} dismissible={dismissible} onClose={onClose}>
       {children}
     </Alert>
   )
