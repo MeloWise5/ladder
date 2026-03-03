@@ -43,7 +43,7 @@ function LadderStepTab({ladder, loading}) {
               <Card style={{ height: '50px', overflow: 'hidden', marginBottom:'5px' }} key={index} bg={stepStatusToVariant[step.status]}>
                 <div>
                 <Card.Img 
-                  src="price_line.png" 
+                  src={`${process.env.PUBLIC_URL}/price_line.png`} 
                   alt="Card image" 
                   style={{ 
                     height:'2px',
