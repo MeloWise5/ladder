@@ -62,7 +62,7 @@ function LoginScreen() {
         </Form>
         <Row className='py-3'>
             <Col>
-                New Customer? <Link to={'/register'}>Register</Link>
+                New Customer? <Link to={'/register'}>Register</Link> / <Link to={'/reset'}>Reset Password</Link>
             </Col>
         </Row>
     </FormContainer>

@@ -9,7 +9,8 @@ import {
     userListReducer, userDeleteReducer, userUpdateReducer,
     userUpdateProfilePaidReducer, userUpdateProfileReducer,
     userGetCredentialsReducer,userCreateCredentialsReducer,userUpdateCredentialsReducer,
-    userDeleteCredentialsReducer, userEnableCredentialsReducer
+    userDeleteCredentialsReducer, userEnableCredentialsReducer,
+    userResetPasswordReducer, userResetReducer
 } from './reducers/userReducers'
 
 import { 
@@ -38,6 +39,8 @@ const reducer = combineReducers({
     historicalDataChart: historicalDataReducer,
     
     userLogin: userLoginReducer,
+    userReset: userResetReducer,
+    userResetPassword: userResetPasswordReducer,
     userRegister: userRegisterReducer,
     userDetails: userDetailsReducer,
     userUpdate: userUpdateReducer,

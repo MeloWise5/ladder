@@ -4,6 +4,8 @@ from base.views import user_views as views
 
 urlpatterns = [
     path('login/',views.MyTokenObtainPairView.as_view(), name='token_obtain_pair'),
+    path('reset/',views.resetUser, name='reset_user'),
+    path('reset-password/',views.resetPassword, name="reset_password"),
     path('register/',views.registerUser, name="user_register"),
 
     path('profile/',views.getUserProfile, name="user_profile"),

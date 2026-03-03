@@ -257,6 +257,15 @@ function Ladder({ladder_id}) {
     setShowModal(true);
     setSuggestionLadderType(suggestion_data)
   }
+  const symbolChartCheck = (symbol, market) => {
+    if (market === 'Stocks') {
+      const query = `${symbol} price stock`;
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+    }else if (market === 'Crypto') {
+      const query = `${symbol} price crypto`;
+      window.open(`https://www.google.com/search?q=${encodeURIComponent(query)}`, '_blank', 'noopener,noreferrer');
+    }
+  }
 
   
   //console.log(ladder_alert)
@@ -361,7 +370,7 @@ function Ladder({ladder_id}) {
               <Card md={4}  className="mb-2">
                 <Card.Header>
                   <Row>
-                    <Col>{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<h5>{name}:</h5>)}</Col> 
+                    <Col>{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<h5 style={{ cursor: 'pointer'}} title={`ladder Id: ${ladder_id}`} onClick={() => symbolChartCheck(symbol, market)}>{name}:</h5>)}</Col> 
                     
                     <Col xs={5} className="text-end">
                     {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<>

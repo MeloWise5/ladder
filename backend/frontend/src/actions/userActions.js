@@ -1,7 +1,10 @@
 import axios from '../axios';  // or whatever path you chose
+import axiosPublic from 'axios'
 import { 
     USER_LOGIN_REQUEST, USER_LOGIN_SUCCESS, USER_LOGIN_FAIL, 
     USER_LOGOUT,
+    USER_RESET_FAIL, USER_RESET_REQUEST, USER_RESET_SUCCESS, USER_RESET_RESET,
+    USER_RESET_PASSWORD_FAIL, USER_RESET_PASSWORD_REQUEST, USER_RESET_PASSWORD_SUCCESS, USER_RESET_PASSWORD_RESET,
     USER_LIST_REQUEST, USER_LIST_SUCCESS, USER_LIST_FAIL, USER_LIST_RESET,
     USER_DETAILS_REQUEST, USER_DETAILS_SUCCESS, USER_DETAILS_FAIL, USER_DETAILS_RESET,
     USER_REGISTER_REQUEST, USER_REGISTER_SUCCESS, USER_REGISTER_FAIL, USER_REGISTER_RESET,
@@ -48,6 +51,61 @@ export const login = (email, password) => async (dispatch) => {
         })
     }
 }
+
+export const reset = (email) => async (dispatch) => {
+    try {
+        dispatch({ type: USER_RESET_REQUEST })
+
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+            }
+        }
+        const { data } = await axiosPublic.post('/api/users/reset/', { 'email':email }, config)
+        dispatch({
+            type: USER_RESET_SUCCESS,
+            payload: data
+        })
+    } catch (error) {
+        dispatch({
+            type: USER_RESET_FAIL, 
+            payload: error.response && error.response.data.detail ?
+                error.response.data.detail : error.message,    
+        })
+    }
+}
+
+export const resetPassword = (uidb64, token, password) => async (dispatch) => {
+    try {
+    dispatch({ type: USER_RESET_PASSWORD_REQUEST })
+
+    const config = {
+      headers: {
+        'Content-Type': 'application/json',
+      },
+    }
+
+        const { data } = await axiosPublic.post(
+      '/api/users/reset-password/',
+      { uidb64, token, password },
+      config
+    )
+
+    dispatch({
+      type: USER_RESET_PASSWORD_SUCCESS,
+      payload: data,
+    })
+  } catch (error) {
+    dispatch({
+      type: USER_RESET_PASSWORD_FAIL,
+      payload:
+        error.response && error.response.data.detail
+          ? error.response.data.detail
+          : error.message,
+    })
+  }
+}
+
 export const register = (name, email, password) => async (dispatch) => {
     try {
         dispatch({ type: USER_REGISTER_REQUEST })

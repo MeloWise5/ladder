@@ -1,12 +1,21 @@
 from django.shortcuts import render
-from rest_framework.decorators import api_view, permission_classes
-from rest_framework.permissions import IsAuthenticated, IsAdminUser
+from django.contrib.auth.tokens import default_token_generator
+from django.utils.http import urlsafe_base64_decode, urlsafe_base64_encode
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import send_mail
+from django.conf import settings
+from django.contrib.sites.shortcuts import get_current_site
+from rest_framework.decorators import api_view, permission_classes, authentication_classes
+from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
 from rest_framework.response import Response
 from django.contrib.auth.models import User
 from base.models import Ladders, APICredentials, Profile
 from base.serializers import LadderSerializer, UserSerializer, UserListSerializer, UserSerializerWithToken, APICredentialsSerializer, ProfileSerializer
 from django.contrib.auth.hashers import make_password
 from rest_framework import status
+import logging
+
+logger = logging.getLogger(__name__)
 
 
 ########################################################################
@@ -55,6 +64,81 @@ def registerUser(request):
         # whenever we get a bad request this will be triggered
         message = {'detail': 'User with this email already exists'}
         return Response(message, status=status.HTTP_400_BAD_REQUEST)
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def resetUser(request):
+    email = (request.data.get('email') or '').strip().lower()
+
+    # Always return same response shape (prevents email enumeration)
+    generic_response = {
+        'detail': 'If an account exists for that email, a reset link has been sent.'
+    }
+
+    if not email:
+        return Response(generic_response, status=status.HTTP_200_OK)
+
+    try:
+        user = User.objects.filter(email__iexact=email).first()
+
+        if user and user.is_active:
+            uidb64 = urlsafe_base64_encode(force_bytes(user.pk))
+            token = default_token_generator.make_token(user)
+
+            # If you have FRONTEND_URL in settings, use it; fallback to current domain
+            frontend_base = getattr(settings, 'FRONTEND_URL', '').rstrip('/')
+            if frontend_base:
+                reset_url = f"{frontend_base}/#/reset-password/{uidb64}/{token}"
+            else:
+                domain = get_current_site(request).domain
+                reset_url = f"http://{domain}/#/reset-password/{uidb64}/{token}"
+
+            subject = "Reset your password"
+            message = (
+                f"Hi {user.first_name or user.username},\n\n"
+                f"Use the link below to reset your password:\n{reset_url}\n\n"
+                "If you did not request this, you can ignore this email."
+            )
+
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=getattr(settings, 'DEFAULT_FROM_EMAIL', None),
+                recipient_list=[user.email],
+                fail_silently=False,
+            )
+
+        return Response(generic_response, status=status.HTTP_200_OK)
+
+    except Exception:
+        logger.exception("resetUser: failed to process reset request for email=%s", email)
+        # Keep external response generic
+        return Response(generic_response, status=status.HTTP_200_OK)
+
+
+@api_view(['POST'])
+@authentication_classes([])
+@permission_classes([AllowAny])
+def resetPassword(request):
+    uidb64 = request.data.get('uidb64')
+    token = request.data.get('token')
+    new_password = request.data.get('password')
+
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+
+        if user and default_token_generator.check_token(user, token):
+            user.password = make_password(new_password)
+            user.save()
+            return Response({'detail': 'Password reset successful'}, status=status.HTTP_200_OK)
+        else:
+            return Response({'detail': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
+
+    except Exception:
+        logger.exception("resetPassword: invalid reset attempt")
+        return Response({'detail': 'Invalid reset link'}, status=status.HTTP_400_BAD_REQUEST)
 
 @api_view(['PUT'])
 @permission_classes([IsAuthenticated])

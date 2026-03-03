@@ -7,6 +7,8 @@ import Footer from './components/Footer'
 import HomeScreen from './screens/HomeScreen'
 import LadderScreen from './screens/Ladder'
 import LoginScreen from './screens/LoginScreen'
+import ResetScreen from './screens/ResetScreen'
+import ResetPasswordScreen from './screens/ResetPasswordScreen'
 import RegisterScreen from './screens/RegisterScreen'
 import ProfileScreen from './screens/ProfileScreen'
 import UserListScreen from './screens/UserListScreen'
@@ -25,6 +27,8 @@ function App() {
           <Route path="/" element={<HomeScreen />} exact />
           
           <Route path="/login" element={<LoginScreen/>} />
+          <Route path="/reset" element={<ResetScreen/>} />
+          <Route path="/reset-password/:uidb64/:token" element={<ResetPasswordScreen />} />
           <Route path="/register" element={<RegisterScreen/>} />
           <Route path="/profile" element={<ProfileScreen/>} />
 
