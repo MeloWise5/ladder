@@ -146,6 +146,7 @@ def updateLadder(request, pk):
     ladder.stop_price_in_percentage = float(data['stop_price_in_percentage'])
     ladder.symbol = data['symbol']
     ladder.symbol_name = data['symbol_name']
+    ladder.trending = data['trending']
     ladder.type = data['type']
 
     ladder.save()

@@ -32,6 +32,7 @@ class Ladders(models.Model):
     stop_price_in_percentage = models.DecimalField(default=0,max_digits=2, decimal_places=0, null=True, blank=True)
     symbol_name = models.CharField(max_length=255, null=True, blank=True)
     symbol = models.CharField(max_length=10, null=True, blank=True)
+    trending = models.CharField(max_length=20, choices=[("RUN_AWAY", "Run Away"), ("HOUR_24", "24 Hour")], default="RUN_AWAY")
     type = models.CharField(max_length=10, null=True, blank=True)
     createdAt = models.DateTimeField(auto_now_add=True) 
     _id = models.AutoField(primary_key=True, editable=False)

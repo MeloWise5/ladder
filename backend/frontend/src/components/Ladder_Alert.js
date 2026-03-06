@@ -19,6 +19,8 @@ function getAlertConfig(alertCode) {
       return { variant: 'info', message: '52-week high alert triggered. All Buys have stopped.' }
     case 'LADDER_CAP':
       return { variant: 'warning', message: 'Ladder cap alert triggered.' }
+    case 'HOUR_24':
+      return { variant: 'warning', message: 'STOPPED: Price is trending downwards in the last 24 hours.' }
     default:
       return { variant: 'warning', message: alertCode }
   }

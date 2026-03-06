@@ -45,6 +45,7 @@ function Ladder({ladder_id}) {
   const [ladder_alert, setAlert] = useState('Sample Name')
   const [amount_per_trade, setAmountPerTrade] = useState(0)
   const [budget, setBudget] = useState(0)
+  const [buffer_52_week, setBuffer52Week] = useState(0)
   const [cap, setCap] = useState(0)
   const [createdAt, setCreatedAt] = useState(0)
   const [debt, setDebt] = useState(0)
@@ -67,6 +68,7 @@ function Ladder({ladder_id}) {
   const [stop_price_in_percentage, setStopPriceInPercentage] = useState(0)
   const [suggestionLadderType, setSuggestionLadderType] = useState(null)
   const [type, setType] = useState('')
+  const [trending, setTrending] = useState("")
   const cryptoDelete = useSelector(state => state.cryptoDelete)
   const { loading: tradeCryptoDeleteLoading, error: tradeCryptoDeleteError, success: tradeCryptoDeleteSuccess } = cryptoDelete
   const tradeSuggestion = useSelector(state => state.tradeSuggestion)
@@ -112,6 +114,7 @@ function Ladder({ladder_id}) {
       setAlert(ladder?.alert || '')
       setAmountPerTrade(ladder?.amount_per_trade || 0 )
       setBudget(ladder?.budget || 0)
+      setBuffer52Week(ladder?.buffer_52_week || 0)
       setCap(Math.floor(ladder?.cap || 0))
       setCreatedAt(ladder?.createdAt || 0)
       setDebt(ladder?.debt || 0)
@@ -136,6 +139,7 @@ function Ladder({ladder_id}) {
       setStopPriceInPercentage(ladder?.stop_price_in_percentage || 0)
       setSymbol(ladder?.symbol || '')
       setSymbolName(ladder?.symbol_name || '')
+      setTrending(ladder?.trending || "")
       setType(ladder?.type || '')
     }
   }, [ladder, ladder_id])
@@ -267,7 +271,13 @@ function Ladder({ladder_id}) {
     }
   }
 
-  
+  const trending_decoder = (trending) => {
+    switch(trending){
+      case 'RUN_AWAY': return 'Run Away Train. Never Stops Trading.';
+      case 'HOUR_24': return '24 Hour % Change. Good for short term momentum.';
+      default: return 'Run Away Train.';
+    }
+  }
   //console.log(ladder_alert)
   
   // Show loader if loading OR if ladder data doesn't match requested ladder_id (stale data)
@@ -488,8 +498,11 @@ function Ladder({ladder_id}) {
                         <ListGroup.Item>
                           Shares Per Trade: {shares_per_trade} shares
                         </ListGroup.Item>
-                        <ListGroup.Item>
+                        <ListGroup.Item variant='success'>
                           Profit: ${((Number(last) * Number(profit_per_trade)) * (Number(shares_per_trade) / Number(last))).toFixed(2)}
+                        </ListGroup.Item>
+                        <ListGroup.Item  variant='warning'>
+                          Step Total: ${((Number(last) * Number(shares_per_trade))).toFixed(2)}
                         </ListGroup.Item>
                       </ListGroup>
                       </Card>
@@ -519,10 +532,19 @@ function Ladder({ladder_id}) {
                           Trade Profit: ${((Number(last)+((last * (percent_per_trade/100)))) - (last)).toFixed(2)}
                         </ListGroup.Item>
                         <ListGroup.Item>
-                          Shares Per Trade: {(amount_per_trade / last).toFixed(1)} shares
+                          {
+                            market === 'Crypto' ? (
+                              <>Shares Per Trade: {(amount_per_trade / last).toFixed(2)} shares</>
+                            ) : (
+                              <>Shares Per Trade: {(amount_per_trade / last).toFixed(0)} shares</>
+                            )
+                          }
                         </ListGroup.Item>
-                        <ListGroup.Item>
+                        <ListGroup.Item variant='success'>
                           Profit: ${( (last * (percent_per_trade/100)) * (amount_per_trade / last)).toFixed(2)}
+                        </ListGroup.Item>
+                        <ListGroup.Item  variant='warning'>
+                          Step Total: ${((Number(last) * Number((amount_per_trade / last).toFixed(1)))).toFixed(2)}
                         </ListGroup.Item>
                       </ListGroup>
                       </Card>
@@ -639,6 +661,25 @@ function Ladder({ladder_id}) {
                       </ListGroup>
                     </Card>
                   </Col>
+                </Row>
+
+                <Row className="py-3">
+                  <Col>
+                    <Card md={4}>
+                      <Card.Header><h3>Features {market} </h3></Card.Header>
+                      <ListGroup variant='flush'>
+                        <ListGroup.Item>
+                          Buffer 52 Week: {buffer_52_week}%
+                        </ListGroup.Item>
+                        <ListGroup.Item>
+                          Trending: {trending_decoder(trending)}
+                        </ListGroup.Item>
+                        
+                        
+                      </ListGroup>
+                    </Card>
+                  </Col>
+                  
                 </Row>
               </Card.Body>
             </Card>)}

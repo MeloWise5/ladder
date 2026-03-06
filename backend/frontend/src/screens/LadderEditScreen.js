@@ -59,6 +59,7 @@ function LadderEditScreen() {
   const [percent_per_trade, setPercentPerTrade] = useState(0);
   const [shares_per_trade, setSharesPerTrade] = useState(0);
   const [stop_price_in_percentage, setStopPriceInPercentage] = useState(0);
+  const [trending, setTrending] = useState("RUN_AWAY"); 
   const [type, setType] = useState("");
   const [typeLocked, setTypeLocked] = useState(false);
 
@@ -115,6 +116,7 @@ function LadderEditScreen() {
       setStopPriceInPercentage(ladder?.stop_price_in_percentage || 0);
       setSymbol(ladder?.symbol || "");
       setSymbolName(ladder?.symbol_name || "");
+      setTrending(ladder?.trending || "RUN_AWAY");
       setType(ladder?.type || "");
       ladder?.type?.length > 1 && setTypeLocked(true);
       ladder?.symbol?.length > 1 && setSymbolLocked(true);
@@ -156,6 +158,7 @@ function LadderEditScreen() {
         stop_price_in_percentage,
         symbol,
         symbol_name: symbolName,
+        trending,
         type,
       })
     );
@@ -697,7 +700,7 @@ function LadderEditScreen() {
               }`} >
               <Col>
                 <p style={{color:'black', fontStyle:'italic'}}>
-                  This feautre stops the ladder from buying with in the 52 week high so you dont get stuck holding that 52 wekk high debt for 52 weeks. It is recommended to set the buffer to at least 5% to account for volatility. For stocks only. Enjoy.
+                  For stocks only. <br></br> This feature stops the ladder from setting buy trades, If the price gets within this buffer percentage window. We hold all Buys. That way you're not stuck with 52 week high debt for 52 weeks. It is recommended to set the buffer to at least 3% to account for volatility.  Enjoy.
                 </p>
               </Col>
               <Col>
@@ -719,6 +722,33 @@ function LadderEditScreen() {
                     ></Form.Control>
                     <InputGroup.Text>%</InputGroup.Text>
                   </InputGroup>
+                </Form.Group>
+              </Col>
+            </Row>
+          </Fade>
+          <hr></hr>
+          <h5>Trending</h5>
+          <hr></hr>
+          <Fade in={market === "Stocks" && priceVisible} unmountOnExit>
+            <Row className={`mt-3 transition-fade ${
+                market === "Stocks" ? "show" : ""
+              }`} >
+              <Col>
+                <p style={{color:'black', fontStyle:'italic'}}>
+                  For stocks only. <br></br> No one wants to Buy stocks when the stock is trending downwards right? Here you can set the 24 Hour % so the ladder stops placing Buy Trades if the % is negative. the other option is called Run Away Train. It never stops until the budget is exhausted. This feature will be updated in the future with more controls. Enjoy.
+                </p>
+              </Col>
+              <Col>
+                <Form.Group controlId="trending">
+                  <Form.Label>Trending</Form.Label>
+                  <Form.Select
+                    value={trending}
+                    onChange={(e) => setTrending(e.target.value)}
+                    disabled={market === "Crypto"}
+                  >
+                    <option value="RUN_AWAY">Run Away Train</option>
+                    <option value="HOUR_24">24 Hour % Change</option>
+                  </Form.Select>
                 </Form.Group>
               </Col>
             </Row>
