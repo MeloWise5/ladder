@@ -8,6 +8,11 @@ import { snapshotLadderProfitChartAction } from '../../actions/chartActions';
 
 defaults.maintainAspectRatio = true;
 defaults.responsive = true;
+defaults.color = '#8b949e';
+defaults.borderColor = 'rgba(139,148,158,0.15)';
+defaults.backgroundColor = 'rgba(139,148,158,0.1)';
+
+const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
 export default function BarGraph({ LADDER_ID, DATE_METHOD }) {
     const dispatch = useDispatch()
@@ -18,12 +23,16 @@ export default function BarGraph({ LADDER_ID, DATE_METHOD }) {
         dispatch(snapshotLadderProfitChartAction(LADDER_ID || 'all', DATE_METHOD || 'all'));
     }, [dispatch, LADDER_ID, DATE_METHOD]);
     //console.log("snapshot_profit_chart:", snapshot_profit_chart);
+  // xBoundaryMap keyed by data-index → month abbreviation for the first VISIBLE tick of
+  // each month. Populated by afterBuildTicks (post-autoSkip), read by the callback.
+  const xBoundaryMap = Object.create(null);
+
   return (
     <>
     {loading ? <Loader /> : error ? <Message variant='danger'>{error}</Message>  : snapshot_profit_chart?.length === 0 ? (
         <Message variant='info'>No historical data available</Message>
     ) : (<>
-    <div style={{height: '350px'}}>
+    <div style={{height: '525px'}}>
     <Line
         data={{
             
@@ -55,6 +64,34 @@ export default function BarGraph({ LADDER_ID, DATE_METHOD }) {
                 },
             },
             scales: {
+                x: {
+                    afterBuildTicks: function(axis) {
+                        for (const k in xBoundaryMap) delete xBoundaryMap[k];
+                        let lastYM = null;
+                        for (const tick of axis.ticks) {
+                            const v = tick.value;
+                            const s = String(snapshot_profit_chart?.[v]?.date || '');
+                            const p = s.split('-');
+                            if (p.length < 3) continue;
+                            const ym = p[0] + '-' + p[1];
+                            if (ym !== lastYM) {
+                                lastYM = ym;
+                                xBoundaryMap[v] = MONTH_ABBR[parseInt(p[1], 10) - 1] || '';
+                            }
+                        }
+                    },
+                    ticks: {
+                        maxRotation: 0,
+                        minRotation: 0,
+                        callback: function(value) {
+                            const s = String(snapshot_profit_chart?.[value]?.date || '');
+                            const p = s.split('-');
+                            if (p.length < 3) return s || String(value);
+                            const day = p[2].substring(0, 2);
+                            return (value in xBoundaryMap) ? [day, xBoundaryMap[value]] : day;
+                        }
+                    }
+                },
                 y: {
                     type: 'linear',
                     display: true,
@@ -88,16 +125,11 @@ export default function BarGraph({ LADDER_ID, DATE_METHOD }) {
             plugins: {
                 title: {
                     display: true,
-                    text: 'Ladder Profit and Debt Over Time',}
-            },
-            legend: {
-                labels: {
-                    filter: function(item, chart) {
-                    // Keep the legend item if its text doesn't match the one to hide
-                    return item.text !== 'Highest' || item.text !== 'Lowest'; 
-                    // Or filter by index:
-                    // return item.datasetIndex !== 1; // Hides the second dataset
-                    }
+                    text: 'Ladder Profit and Debt Over Time',
+                    color: '#c9d1d9'
+                },
+                legend: {
+                    labels: { color: '#8b949e' }
                 }
             }
         }}

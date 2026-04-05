@@ -27,7 +27,7 @@ function GaugeGraph({LADDER_DATA}) {
                 return;
             }
             if (ctx.index === 1) {
-                return 'rgb(234, 234, 234)';
+                return 'rgba(30,36,48,0.5)';
             }
             return COLORS[index(ctx.raw)];
             }
@@ -47,7 +47,7 @@ function GaugeGraph({LADDER_DATA}) {
         y: '-80%'
     },
     font: [{size: 18, weight: 'bold'}, {size: 16}],
-    color: ({chart}) => [COLORS[index(chart.data.datasets[0].data[0])], 'grey']
+    color: ({chart}) => [COLORS[index(chart.data.datasets[0].data[0])], '#8b949e']
     };
 const config = {
   type: 'doughnut',

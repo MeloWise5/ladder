@@ -513,160 +513,103 @@ class LadderSerializer(serializers.ModelSerializer):
     
     def get_avg_buy_days(self, obj):
         """Calculate average days between buy_placed and buy_date for closed transactions"""
-        closed_transactions = obj.transactions_set.filter(status='CLOSED')
+        rows = obj.transactions_set.filter(
+            status='CLOSED'
+        ).exclude(buy_placed='0').exclude(buy_placed='').exclude(
+            buy_date='0'
+        ).exclude(buy_date='').values_list('buy_placed', 'buy_date')
         total_days = 0
         count = 0
-        
-        for trans in closed_transactions:
-            if trans.buy_placed and trans.buy_date and trans.buy_placed != '0' and trans.buy_date != '0':
-                buy_placed = parse_timestamp(trans.buy_placed)
-                buy_date = parse_timestamp(trans.buy_date)
-                
-                if buy_placed and buy_date:
-                    days = (buy_date - buy_placed).days
-                    total_days += days
-                    count += 1
-        
+        for buy_placed_raw, buy_date_raw in rows:
+            buy_placed = parse_timestamp(buy_placed_raw)
+            buy_date = parse_timestamp(buy_date_raw)
+            if buy_placed and buy_date:
+                total_days += (buy_date - buy_placed).days
+                count += 1
         return round(total_days / count, 2) if count > 0 else 0.0
-    
+
     def get_avg_sell_days(self, obj):
         """Calculate average days between sell_placed and sell_date for closed transactions"""
-        closed_transactions = obj.transactions_set.filter(status='CLOSED')
+        rows = obj.transactions_set.filter(
+            status='CLOSED'
+        ).exclude(sell_placed='0').exclude(sell_placed='').exclude(
+            sell_date='0'
+        ).exclude(sell_date='').values_list('sell_placed', 'sell_date')
         total_days = 0
         count = 0
-        
-        for trans in closed_transactions:
-            if trans.sell_placed and trans.sell_date and trans.sell_placed != '0' and trans.sell_date != '0':
-                sell_placed = parse_timestamp(trans.sell_placed)
-                sell_date = parse_timestamp(trans.sell_date)
-                
-                if sell_placed and sell_date:
-                    days = (sell_date - sell_placed).days
-                    total_days += days
-                    count += 1
-        
+        for sell_placed_raw, sell_date_raw in rows:
+            sell_placed = parse_timestamp(sell_placed_raw)
+            sell_date = parse_timestamp(sell_date_raw)
+            if sell_placed and sell_date:
+                total_days += (sell_date - sell_placed).days
+                count += 1
         return round(total_days / count, 2) if count > 0 else 0.0
-    
+
     def get_avg_trades_per_day(self, obj):
         """Calculate average number of closed trades per day"""
-        closed_transactions = obj.transactions_set.filter(status='CLOSED')
-        count = closed_transactions.count()
-        
+        count = obj.transactions_set.filter(status='CLOSED').count()
         if count == 0:
             return 0.0
-        
-        dates = []
-        for trans in closed_transactions:
-            if trans.sell_date and trans.sell_date != '0':
-                sell_date = parse_timestamp(trans.sell_date)
-                if sell_date:
-                    # DEBUG: Log datetime info to identify naive datetimes
-                    if sell_date.tzinfo is None:
-                        print(f"[DEBUG] NAIVE datetime found! Transaction ID: {trans.id}, sell_date raw: {trans.sell_date}, parsed: {sell_date}")
-                    dates.append(sell_date)
-        
+        sell_dates_raw = obj.transactions_set.filter(
+            status='CLOSED'
+        ).exclude(sell_date='0').exclude(sell_date='').values_list('sell_date', flat=True)
+        dates = [d for raw in sell_dates_raw if (d := parse_timestamp(raw))]
         if len(dates) < 2:
             return 0.0
-        
-        # Calculate days between earliest and latest transaction
         try:
-            earliest = min(dates)
-            latest = max(dates)
-        except TypeError as e:
-            # If comparison fails, log all dates for debugging
-            print(f"[ERROR] DateTime comparison failed in get_avg_trades_per_day for ladder {obj.id}")
-            for i, dt in enumerate(dates):
-                print(f"  Date {i}: {dt} | Type: {type(dt)} | TZ: {dt.tzinfo}")
-            raise
-        
-        total_days = (latest - earliest).days + 1  # +1 to include both start and end day
-        
+            total_days = (max(dates) - min(dates)).days + 1
+        except TypeError:
+            return 0.0
         return round(count / total_days, 2) if total_days > 0 else 0.0
-    
+
     def get_avg_profit_per_day(self, obj):
         """Calculate average profit per day for closed transactions"""
-        closed_transactions = obj.transactions_set.filter(status='CLOSED')
-        total_profit = sum(float(t.profit) for t in closed_transactions if t.profit)
-        
+        result = obj.transactions_set.filter(status='CLOSED').aggregate(total=Sum('profit'))
+        total_profit = float(result['total']) if result['total'] else 0.0
         if total_profit == 0:
             return 0.0
-        
-        dates = []
-        for trans in closed_transactions:
-            if trans.sell_date and trans.sell_date != '0':
-                sell_date = parse_timestamp(trans.sell_date)
-                if sell_date:
-                    dates.append(sell_date)
-        
+        sell_dates_raw = obj.transactions_set.filter(
+            status='CLOSED'
+        ).exclude(sell_date='0').exclude(sell_date='').values_list('sell_date', flat=True)
+        dates = [d for raw in sell_dates_raw if (d := parse_timestamp(raw))]
         if len(dates) < 2:
             return 0.0
-        
-        # Calculate days between earliest and latest transaction
         try:
-            earliest = min(dates)
-            latest = max(dates)
-        except TypeError as e:
-            print(f"[ERROR] DateTime comparison failed in get_avg_profit_per_day for ladder {obj.id}")
-            for i, dt in enumerate(dates):
-                print(f"  Date {i}: {dt} | Type: {type(dt)} | TZ: {dt.tzinfo}")
-            raise
-        
-        total_days = (latest - earliest).days + 1  # +1 to include both start and end day
-        
+            total_days = (max(dates) - min(dates)).days + 1
+        except TypeError:
+            return 0.0
         return round(total_profit / total_days, 2) if total_days > 0 else 0.0
     
     def get_top_5_days_by_profit(self, obj):
         """Get top 5 days with the most profit from closed transactions"""
         from collections import defaultdict
-        
-        closed_transactions = obj.transactions_set.filter(status='CLOSED')
+        rows = obj.transactions_set.filter(
+            status='CLOSED'
+        ).exclude(sell_date='0').exclude(sell_date='').values_list('sell_date', 'profit')
         daily_profit = defaultdict(float)
-        
-        for trans in closed_transactions:
-            if trans.sell_date and trans.sell_date != '0' and trans.profit:
-                sell_date = parse_timestamp(trans.sell_date)
-                
+        for sell_date_raw, profit in rows:
+            if profit:
+                sell_date = parse_timestamp(sell_date_raw)
                 if sell_date:
-                    date_key = sell_date.strftime('%Y-%m-%d')
-                    daily_profit[date_key] += float(trans.profit)
-        
-        # Sort by profit descending and take top 5
+                    daily_profit[sell_date.strftime('%Y-%m-%d')] += float(profit)
         top_5 = sorted(daily_profit.items(), key=lambda x: x[1], reverse=True)[:5]
         return [{'date': date, 'profit': round(profit, 2)} for date, profit in top_5]
-    
+
     def get_top_5_steps_by_profit(self, obj):
-        """Get top 5 steps with the most profit from closed transactions"""
-        from collections import defaultdict
-        
-        closed_transactions = obj.transactions_set.filter(status='CLOSED')
-        step_profit = defaultdict(float)
-        step_info = {}
-        
-        for trans in closed_transactions:
-            if trans.step and trans.profit:
-                # Extract the step ID properly
-                step_id = trans.step._id if hasattr(trans.step, '_id') else (trans.step.id if hasattr(trans.step, 'id') else trans.step)
-                step_profit[step_id] += float(trans.profit)
-                
-                # Store step details for reference
-                if step_id not in step_info:
-                    try:
-                        step_obj = obj.steps_set.get(_id=step_id)
-                        step_info[step_id] = {
-                            'step_code': step_obj.step_code,
-                            'price': float(step_obj.price) if step_obj.price else 0
-                        }
-                    except:
-                        step_info[step_id] = {'step_code': 'Unknown', 'price': 0}
-        
-        # Sort by profit descending and take top 5
-        top_5 = sorted(step_profit.items(), key=lambda x: x[1], reverse=True)[:5]
+        """Get top 5 steps with the most profit from closed transactions (single ORM query)"""
+        results = (
+            obj.transactions_set
+            .filter(status='CLOSED', step__isnull=False, profit__isnull=False)
+            .values('step___id', 'step__step_code', 'step__price')
+            .annotate(total_profit=Sum('profit'))
+            .order_by('-total_profit')[:5]
+        )
         return [{
-            'step_id': int(step_id),  # Ensure it's an integer
-            'step_code': step_info.get(step_id, {}).get('step_code', 'Unknown'),
-            'price': step_info.get(step_id, {}).get('price', 0),
-            'profit': round(profit, 2)
-        } for step_id, profit in top_5]
+            'step_id': r['step___id'],
+            'step_code': r['step__step_code'] or 'Unknown',
+            'price': float(r['step__price']) if r['step__price'] else 0,
+            'profit': round(float(r['total_profit']), 2)
+        } for r in results]
     
     def to_representation(self, instance):
         """Calculate and update profit field before serializing"""

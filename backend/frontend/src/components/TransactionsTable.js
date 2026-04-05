@@ -1,7 +1,7 @@
 import React, {useState, useEffect, useCallback, useRef, memo, useMemo} from 'react'
 import { Link, useNavigate } from 'react-router-dom'
 import { useDispatch, useSelector } from 'react-redux'
-import { Row, Col, Table, ListGroup, Card, Button, Accordion, Pagination} from 'react-bootstrap'
+import { Row, Col, Table, ListGroup, Card, Button, Pagination} from 'react-bootstrap'
 import Loader from '../components/Loader'
 import Message from '../components/Message'
 import {formatDate} from '../components/utilities';
@@ -9,8 +9,11 @@ import { getUserDetails } from '../actions/userActions'
 import { cryptoDeleteTrade, stocksDeleteTrade } from '../actions/tradeActions'
 
 
-function TransactionsTable({ladder=false, status}) {
+function TransactionsTable({ladder=false, status, selectedStep, onStepClick}) {
   const hasLoadedUser = useRef(false)
+  const rowRefs = useRef({})
+  const tableBodyRef = useRef(null)
+  const [flashId, setFlashId] = useState(null)
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const userDetails = useSelector(state => state.userDetails)
@@ -24,6 +27,31 @@ function TransactionsTable({ladder=false, status}) {
       hasLoadedUser.current = true
     }
   }, [dispatch, user?.name])
+
+  // Scroll to & highlight the row matching the selected step.
+  // The highlight persists as long as selectedStep points to that transaction.
+  useEffect(() => {
+    if (!selectedStep) {
+      setFlashId(null);
+      return;
+    }
+    const match = displayTransactions.find(
+      t => String(t.step) === String(selectedStep._id)
+    );
+    setFlashId(match ? match._id : null);
+    if (!match) return;
+    const el = rowRefs.current[match._id];
+    const container = tableBodyRef.current;
+    if (el && container) {
+      // Subtract the sticky thead height so the row lands just below the header,
+      // not one row-height behind it.
+      const thead = container.querySelector('thead');
+      const theadHeight = thead ? thead.getBoundingClientRect().height : 0;
+      const elRect = el.getBoundingClientRect();
+      const containerRect = container.getBoundingClientRect();
+      container.scrollTop += elRect.top - containerRect.top - theadHeight;
+    }
+  }, [selectedStep]);
   //console.log(user)
   // Helper function to format prices based on ladder type
   const get_price = (transaction, side) => {
@@ -185,6 +213,17 @@ function TransactionsTable({ladder=false, status}) {
     const currentDateKey = transactionsByDate.dates[currentPage];
     return transactionsByDate.groupedData[currentDateKey]?.dateLabel || '';
   }, [status, transactionsByDate, currentPage]);
+  const fmt = (v) => {
+    if (v === null || v === undefined || v === '' || v === '-') return '-';
+    const n = parseFloat(v);
+    return isNaN(n) ? '-' : `$${n.toFixed(2)}`;
+  };
+  const fmtShares = (v) => {
+    if (v === null || v === undefined || v === '' || v === '-') return '-';
+    const n = parseFloat(v);
+    return isNaN(n) ? '-' : n.toFixed(4).replace(/\.?0+$/, '') || '0';
+  };
+
   const cancelOrderHandler = useCallback((market,orderId,transaction_id, side, step_id) => {
     //console.log('cancelOrderHandler called:', {market, orderId, transaction_id, side, step_id});
     if (window.confirm('Are you sure you want to cancel this order? \n\nIf you want to Stop ALL SELLING of shares. \nEdit your ladders direction to BUY.\n Otherwise, the script will make the same trade.')) {
@@ -195,7 +234,7 @@ function TransactionsTable({ladder=false, status}) {
   }, [dispatch])
   //console.log(user)
   const closed_transaction_table = displayTransactions && displayTransactions.length > 0 ? (
-    <Table striped bordered hover responsive className='table-sm'>
+    <Table className='table-sm dark-table'>
       <thead>
         <tr>
           <th 
@@ -228,13 +267,26 @@ function TransactionsTable({ladder=false, status}) {
       </thead>
       <tbody>
         {displayTransactions.map((closed_transactions, index) => {
-          // Find the matching step by currentStepId (or whatever field links it)
+          // Find the matching step for this transaction (for click-to-select)
+          const handleRowClick = () => {
+            if (!onStepClick || !ladder?.steps) return;
+            const matchingStep = ladder.steps.find(
+              s => String(s.transaction?._id) === String(closed_transactions._id)
+            );
+            if (!matchingStep) return;
+            onStepClick(selectedStep && String(selectedStep._id) === String(matchingStep._id) ? null : matchingStep);
+          };
           return (
             <React.Fragment key={closed_transactions._id}>
               {/* Buy Row */}
-              <tr style={{ borderTop: '5px solid grey' }}>
+              <tr
+                ref={el => { rowRefs.current[closed_transactions._id] = el; }}
+                className={`txn-row-group-start${flashId === closed_transactions._id ? ' txn-row-flash' : ''}`}
+                onClick={handleRowClick}
+                style={{ cursor: onStepClick ? 'pointer' : 'default' }}
+              >
                 <td rowSpan={2}>{closed_transactions._id}</td>
-                <td rowSpan={2}>{closed_transactions.profit || '-'}</td>
+                <td rowSpan={2}>{closed_transactions.profit ? fmt(closed_transactions.profit) : '-'}</td>
                 <td rowSpan={2}>{closed_transactions.step_details['step_code']}</td>
                 <td>BUY</td>
                 <td>{closed_transactions.buy_date && !['',0,'0', null, undefined].includes(closed_transactions.buy_date) ? 
@@ -248,19 +300,24 @@ function TransactionsTable({ladder=false, status}) {
                                           closed_transactions.buy_id, 
                                           closed_transactions._id, 
                                           'BUY', 
-                                          closed_transactions.step )}> Cancel Order</Button> : 
+                                          closed_transactions.step )}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'middle', display:'block'}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        </Button> : 
                         ''
                       )
                     }</td>
                 <td>{formatDate(closed_transactions.buy_placed) || ''}</td>
                 <td>{closed_transactions.buy_id || '-'}</td>
-                <td rowSpan={2}>{closed_transactions.shares_per_trade || '-'}</td>
+                <td>{fmtShares(closed_transactions.shares_per_trade)}</td>
                 <td>{closed_transactions.buy_price && !['',0,'0', null, undefined].includes(closed_transactions.buy_price) ? get_price(closed_transactions,'BUY') : '-'}</td>
-                <td>{closed_transactions.buy_fee || '-'}</td>
-                <td>{closed_transactions.buy_total || '-'}</td>
+                <td>{fmt(closed_transactions.buy_fee)}</td>
+                <td>{fmt(closed_transactions.buy_total)}</td>
               </tr>
               {/* Sell Row */}
-              <tr>
+              <tr className={flashId === closed_transactions._id ? 'txn-row-flash' : ''}
+                onClick={handleRowClick}
+                style={{ cursor: onStepClick ? 'pointer' : 'default' }}
+              >
                 <td>SELL</td>
                 <td>{closed_transactions.sell_date && !['',0,'0', null, undefined].includes(closed_transactions.sell_date) ? 
                       formatDate(closed_transactions.sell_date) : 
@@ -273,14 +330,17 @@ function TransactionsTable({ladder=false, status}) {
                                           closed_transactions.sell_id, 
                                           closed_transactions._id, 
                                           'SELL', 
-                                          closed_transactions.step )}> Cancel Order</Button> : ''
+                                          closed_transactions.step )}>
+                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'middle', display:'block'}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        </Button> : ''
                         )
                     }</td>
                 <td>{formatDate(closed_transactions.sell_placed) || ''}</td>
                 <td>{closed_transactions.sell_id || ''}</td>
+                <td>{fmtShares(closed_transactions.shares_per_trade)}</td>
                 <td>{closed_transactions.sell_price && !['',0,'0', null, undefined].includes(closed_transactions.sell_price) ? get_price(closed_transactions,'SELL') : '-'}</td>
-                <td>{closed_transactions.sell_fee || '-'}</td>
-                <td>{closed_transactions.sell_total || '-'}</td>
+                <td>{fmt(closed_transactions.sell_fee)}</td>
+                <td>{fmt(closed_transactions.sell_total)}</td>
               </tr>
             </React.Fragment>
           );
@@ -343,25 +403,23 @@ function TransactionsTable({ladder=false, status}) {
   ) : null;
 
   return (
-    <div>
-      <Accordion defaultActiveKey={null} className='mb-2'>
-      <Accordion.Item eventKey="0">
-        <Accordion.Header>
+    <div className="txn-table-card">
+      <div className="txn-table-card-header">
+        <span className="txn-stats-title">
           {status === 'CLOSED' ? (
-            currentDateLabel 
-              ? `${displayTransactions.length} Closed Transactions - ${currentDateLabel}` 
+            currentDateLabel
+              ? `${displayTransactions.length} Closed Transactions — ${currentDateLabel}`
               : `${all_user_transactions.length} Closed Transactions`
           ) : (
             `${all_user_transactions.length} Open Transactions`
           )}
-        </Accordion.Header>
-        <Accordion.Body>
-          {paginationComponent}
-          {closed_transaction_table}
-          {paginationComponent}
-        </Accordion.Body>
-      </Accordion.Item>
-      </Accordion>
+        </span>
+      </div>
+      <div className="txn-table-body" ref={tableBodyRef}>
+        {paginationComponent}
+        {closed_transaction_table}
+        {paginationComponent}
+      </div>
     </div>
   )
 }

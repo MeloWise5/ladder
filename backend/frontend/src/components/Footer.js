@@ -1,16 +1,9 @@
 import React from 'react'
-import { Container,Row,Col } from 'react-bootstrap'
 function Footer() {
   return (
-    
-      <footer>
-        <Container>
-          <Row>
-            <Col className='text-center py-3'>Copywrite &copy; Ladder</Col>
-          </Row>
-        </Container>
-      </footer>
-    
+    <footer className="dash-footer">
+      Copyright &copy; Ladder
+    </footer>
   )
 }
 

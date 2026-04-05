@@ -1,7 +1,7 @@
 import React, {useEffect, useState, useCallback, useMemo, useRef} from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import {Link, useParams, useNavigate} from 'react-router-dom'
-import { Row, Col, Table, Image, ListGroup, Card, Button,InputGroup, Form, Tabs, Tab, Modal  } from 'react-bootstrap'
+import { Row, Col, Table, Image, ListGroup, Card, Button, InputGroup, Form, Modal } from 'react-bootstrap'
 import { detailsLadder, deleteLadder, updateEnabledLadder, listUsersLadders, createLadder, bulkCreateLadders } from '../actions/ladderActions';
 import { tradeSuggestionGROK } from '../actions/tradeActions';
 import Loader from '../components/Loader'
@@ -11,11 +11,12 @@ import TransactionsTable from '../components/TransactionsTable'
 import Suggestions from '../components/Suggestions'
 import LadderStepTab from '../components/LadderStepTab';
 import LadderAlert from '../components/Ladder_Alert';
-import LadderReport from '../components/LadderReport';
 import {formatDate} from '../components/utilities';
 import { LADDER_UPDATE_RESET } from '../constants/ladderConstants';
 import { CRYPTO_DELETE_RESET, STOCKS_DELETE_RESET, TRANSACTIONS_DELETE_RESET, TRADE_SUGGESTION_RESET } from '../constants/tradeConstants';
-import GaugeGraph from '../components/Charts/GaugeGraph';
+import { HISTORICAL_DATA_RESET, SNAPSHOT_LADDER_PROFIT_RESET } from '../constants/chartConstants';
+import LineLadderStockGraph from '../components/Charts/LineLadderStockGraph';
+import LineGraph from '../components/Charts/LineGraph';
 
 function Ladder({ladder_id}) {
   const dispatch = useDispatch()
@@ -36,6 +37,25 @@ function Ladder({ladder_id}) {
   const abortControllerRef = useRef(null);
 
   const [message, setMessage] = useState(null)
+  const [stockDateMethod, setStockDateMethod] = useState('week')
+  const [chartDateMethod, setChartDateMethod] = useState('week')
+  const [activeChart, setActiveChart] = useState('stock')
+  const [selectedStep, setSelectedStep] = useState(null)
+  const [selectedStepId, setSelectedStepId] = useState(null)
+  const handleStepIdClick = (id) => {
+    setSelectedStepId(id)
+    if (id) {
+      setStockDateMethod('all')
+    } else {
+      setStockDateMethod('month')
+    }
+  }
+
+  // The Steps serializer returns `transaction` as the full transaction object (not just an ID).
+  // The chart API returns `transaction_id: transaction._id` for each plotted buy point.
+  // So step.transaction._id is the value that matches the chart's transaction_id field.
+  const selectedTransactionId = selectedStep?.transaction?._id || null
+
   const [symbol, setSymbol] = useState('')
   const [symbolLocked, setSymbolLocked] = useState(false)
   const [symbolName, setSymbolName] = useState('')
@@ -103,6 +123,10 @@ function Ladder({ladder_id}) {
     const currentLadderId = ladder?._id
     if (!currentLadderId || currentLadderId !== ladderId) {
       if (!loadingLadder) {
+        // Clear stale chart data and symbol immediately so chart shows clean loader
+        dispatch({ type: HISTORICAL_DATA_RESET })
+        dispatch({ type: SNAPSHOT_LADDER_PROFIT_RESET })
+        setSymbol('')
         dispatch(detailsLadder(ladderId))
       }
     }
@@ -141,6 +165,7 @@ function Ladder({ladder_id}) {
       setSymbolName(ladder?.symbol_name || '')
       setTrending(ladder?.trending || "")
       setType(ladder?.type || '')
+      setSelectedStep(null)  // clear any selected step when a new ladder loads
     }
   }, [ladder, ladder_id])
 
@@ -334,360 +359,247 @@ function Ladder({ladder_id}) {
       <Row>
         <LadderAlert ladder_id={id} ladder_alert={ladder_alert} />
       </Row>
-      <Row>
-        <Col>
-        <Row>
 
-          <Col>
-            
-            <Card className="mb-2 text-center " style={{ border: '0', width: 'fit-content', margin: '0 auto' }}>
-             
-              <GaugeGraph LADDER_DATA={ladder}/>
-              <Card.Body className="p-2">
-                <Card.Title className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<><h5>Daily Profit: ${Number(daily_profit).toFixed(2)} | Profit: ${Number(profit).toFixed(2)}</h5></>)}</Card.Title>
-              </Card.Body>
-            </Card>
-          </Col>
-          {/* {market.toLowerCase() === 'stocks' && (
-          <Col>
-          <Card className="mb-2 text-center " style={{ width: 'fit-content', margin: '0 auto' }}>
-            <Card.Header>
-              <h5>Stock Suggestions</h5>
-            </Card.Header>
-            <Card.Body className="p-2">
-              {!type || !symbol ? (
-                <>
-                  <p className="mb-2">Please fill out the ladder configuration first.</p>
-                  <Button variant='warning' className='p-1 mb-1' onClick={handleEditLadder}>
-                    <i className="fas fa-edit"></i> Edit Configuration
-                  </Button>
-                </>
-              ) : (
-                <>
-                  <p>This provides 10 stock suggestions based on market trends and your ladder configuration.</p>
-                  <Button variant='primary' className='p-1 mb-1' onClick={handleAISuggestions}>
-                    Search <i className="fas fa-search"></i>
-                  </Button>
-                </>
-              )}
-            </Card.Body>
-          </Card>
-          </Col>
-          )} */}
-          <Col>
-            <Row><Col>
-            
-              <Card md={4}  className="mb-2">
-                <Card.Header>
-                  <Row>
-                    <Col>{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<h5 style={{ cursor: 'pointer'}} title={`ladder Id: ${ladder_id}`} onClick={() => symbolChartCheck(symbol, market)}>{name}:</h5>)}</Col> 
-                    
-                    <Col xs={5} className="text-end">
-                    {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<>
-                      <Form>
-                        <Form.Group controlId='enable' style={{cursor: 'pointer'}}>
-                            <Form.Check 
-                              type='switch' 
-                              placeholder='Enter enable' 
-                              id={id} 
-                              checked={enable} 
-                              onChange={enabledHandler}
-                              style={{cursor: 'pointer'}}
-                              className="pointer-switch"
-                            /> 
-                        </Form.Group>
-                      </Form>
-                      <style>{`
-                        .pointer-switch, 
-                        .pointer-switch input, 
-                        .pointer-switch label,
-                        .pointer-switch .form-check-input {
-                          cursor: pointer !important;
-                        }
-                      `}</style></>)}
-                    </Col>
-                    <Col xs={2}>{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (<Button variant='warning' className='p-1 mb-1' onClick={handleEditLadder}><i className="fas fa-edit"></i></Button>)}</Col>
-                  </Row> 
-                </Card.Header>
-                <ListGroup variant='flush' className="list-group-vertical">
-                  
-                  <ListGroup.Item className="p-0">
-                    <Row className="g-0">
-                    <Col lg={12} xl={5} className="px-2 py-1" style={{ backgroundColor: '#f0f0f0', borderRight:'1px solid darkgrey',color: 'black' }}>PRICE</Col>
-                    <Col className="px-2 py-1"><h5 className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (`$${last}`)}</h5></Col>
-                    </Row>
-                    
-                  </ListGroup.Item>
-                  <ListGroup.Item className="p-0">
-                    <Row className="g-0">
-                    <Col lg={12} xl={5} className="px-2 py-1" style={{ backgroundColor: '#f0f0f0', borderRight:'1px solid darkgrey',color: 'black' }}>HIGHEST</Col>
-                    <Col className="px-2 py-1"><h5 className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (`$${highest}`)}</h5></Col>
-                    </Row>
-                  </ListGroup.Item>
-                  <ListGroup.Item className="p-0">
-                    <Row className="g-0">
-                    <Col  lg={12} xl={5} className="px-2 py-1" style={{ backgroundColor: '#f0f0f0', borderRight:'1px solid darkgrey',color: 'black' }}>LOWEST</Col>
-                    <Col className="px-2 py-1"><h5 className="m-0">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) : (`$${lowest}`)}</h5></Col>
-                    </Row>
-                  </ListGroup.Item>
+      {/* ── Ladder Header Bar ── */}
+      {!loadingLadder && ladder && ladder._id === Number(ladder_id) ? (
+        <div className="section-fade-in">
+          <div className="ldh-bar">
+            <div className="ldh-identity">
+              <span className="ldh-symbol" title={`ID: ${ladder_id}`} onClick={() => symbolChartCheck(symbol, market)}>{symbol}</span>
+              <span className="ldh-name">{name}</span>
+            </div>
+            <div className="ldh-stats">
+              <div className="ldh-stat">
+                <span className="ldh-stat-val">${Number(last).toFixed(2)}</span>
+                <span className="ldh-stat-label">PRICE</span>
+              </div>
+              <div className="ldh-stat">
+                <span className="ldh-stat-val">${Number(highest).toFixed(2)}</span>
+                <span className="ldh-stat-label">HIGH</span>
+              </div>
+              <div className="ldh-stat">
+                <span className="ldh-stat-val">${Number(lowest) >= 1000000 ? '0.00' : Number(lowest).toFixed(2)}</span>
+                <span className="ldh-stat-label">LOW</span>
+              </div>
+              <div className="ldh-sep" />
+              <div className="ldh-stat">
+                <span className={`ldh-stat-val ${daily_profit >= 0 ? 'pos' : 'neg'}`}>{daily_profit >= 0 ? '+' : ''}${Number(daily_profit).toFixed(2)}</span>
+                <span className="ldh-stat-label">DAILY P&L</span>
+              </div>
+              <div className="ldh-stat">
+                <span className={`ldh-stat-val ${profit >= 0 ? 'pos' : 'neg'}`}>{profit >= 0 ? '+' : ''}${Number(profit).toFixed(2)}</span>
+                <span className="ldh-stat-label">TOTAL P&L</span>
+              </div>
+            </div>
+            <div className="ldh-controls">
+              <div className="ldh-last-ran">
+                <span className="ldh-last-ran-date">{lastRan.split(' : ')[0] || lastRan}</span>
+                <span className="ldh-last-ran-time">{lastRan.split(' : ')[1] || ''}</span>
+              </div>
+              <Form.Check
+                type='switch'
+                id={id}
+                checked={enable}
+                onChange={enabledHandler}
+                className="pointer-switch ldh-toggle"
+              />
+              <Button variant='outline-warning' size="sm" className="ldh-edit-btn" onClick={handleEditLadder}>
+                <i className="fas fa-edit" />
+              </Button>
+            </div>
+          </div>
+          <div className="ldh-budget">
+            <div className="ldh-budget-meta">
+              <span className="ldh-budget-title">BUDGET</span>
+              <span className="ldh-budget-detail">
+                <span className="ldh-budget-used">${Number(debt).toFixed(0)} used</span>
+                <span className="ldh-budget-sep">·</span>
+                <span className={`${(Number(budget) - Number(debt)) < 0 ? 'neg' : 'pos'}`}>${(Number(budget) - Number(debt)).toFixed(0)} remaining</span>
+                <span className="ldh-budget-sep">·</span>
+                <span className="ldh-budget-total">${Number(budget).toFixed(0)} total</span>
+              </span>
+              <span className="ldh-budget-pct">{budget > 0 ? ((debt / budget) * 100).toFixed(0) : 0}%</span>
+            </div>
+            <div className="ldh-budget-track">
+              <div
+                className="ldh-budget-fill"
+                style={{
+                  width: `${budget > 0 ? Math.min((debt / budget) * 100, 100) : 0}%`,
+                  background: budget > 0
+                    ? (debt / budget) >= 0.9 ? 'var(--color-red)'
+                    : (debt / budget) >= 0.7 ? 'var(--color-yellow)'
+                    : 'var(--color-green)'
+                    : 'var(--color-green)'
+                }}
+              />
+            </div>
+          </div>
+        </div>
+      ) : (
+        <div className="ldh-loading"><Loader /></div>
+      )}
 
-                </ListGroup>
-                <Card.Footer className="text-center px-2 py-1">{loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(<>Last Ran: {lastRan}</>)}</Card.Footer>
-                </Card>
-              </Col>
-            </Row>
-            
-          </Col>
-          <hr></hr>
-        </Row>
-        
-        <Tabs
-          defaultActiveKey="details"
-          id="ladder-tabs"
-          className="mb-3"
-        >
-          <Tab eventKey="home" title="Reports" >
-           {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
-            <LadderReport LADDER_DATA={ladder} />)}
-          </Tab>
-          <Tab eventKey="steps" title="Ladder Steps">
-            {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
-            <LadderStepTab ladder={ladder} loading={loadingLadder} />)}
-          </Tab>
-          <Tab eventKey="transactions" title="Ladder Transactions">
-            <Row>
-              <Col>
-              {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
-                <>
-                <TransactionsStats ladder={ladder} />
-                <TransactionsTable ladder={ladder} status='OPEN' /></>)}
-              </Col>
-            </Row>
-          </Tab>
-          <Tab eventKey="details" title="Details">
-            {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader /> ) :(
-            <Card>
-              <Card.Header>
-                <Row>
-                  <Col><h3>{type}@{profit_per_trade}</h3></Col>
-                  <Col md={3} sm={5} xs={7}><h5>Created on {new Date(createdAt).toLocaleDateString()}</h5></Col>
-                </Row>
-              </Card.Header>
-              <Card.Subtitle className=" p-2 mb-2 text-muted">
-                {type === 'Fixed' ? (
-                  <>
-                 <Row>
-                      <Col>The profit per trade is FIXED to ${profit_per_trade}. <br></br> 
-                    At the moment you are purchaseing {shares_per_trade} Shares per Trade every ${gap}, and selling when the price goes up ${profit_per_trade}.<br></br> 
-                    This means you will be purchasing {shares_per_trade} shares every ${gap} until the ladder reaches its cap of ${cap} or the budget of ${budget} is exhausted.<br></br>
-                    Each trade will gain ${(Number(profit_per_trade) * Number(shares_per_trade)).toFixed(2)} in profit.<br></br><br></br></Col>
-                      <Col md={5} sm={5} xs={7}>
-                      <Card md={4}>
-                      <Card.Header><h5>At ${Number(last).toFixed(2)} the trade is:</h5></Card.Header>
-                      <ListGroup variant='flush'>
-                        
-                        <ListGroup.Item>
-                          Buy Price: ${Number(last).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Sell Price: ${(Number(last) + Number(profit_per_trade)).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Trade Profit: ${((Number(last) + Number(profit_per_trade)) - Number(last)).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Shares Per Trade: {shares_per_trade} shares
-                        </ListGroup.Item>
-                        <ListGroup.Item variant='success'>
-                          Profit: ${((Number(last) * Number(profit_per_trade)) * (Number(shares_per_trade) / Number(last))).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item  variant='warning'>
-                          Step Total: ${((Number(last) * Number(shares_per_trade))).toFixed(2)}
-                        </ListGroup.Item>
-                      </ListGroup>
-                      </Card>
-                      </Col>
-                    </Row>
-                 </>) : type === 'Percentage' ? (
-                  <>
-                  <div>
-                    <Row>
-                      <Col>The Percentage ({percent_per_trade}%) is to figure out the sell price.  <br></br>
-                    The Amount Per Trade (${amount_per_trade}) is to figure out the amount of shares to buy.<br></br><br></br>
-                    Right now we have the buy price at ${Number(last).toFixed(2)}. <br></br>
-                    So with an Amount Per Trade of ${amount_per_trade}, we are purchasing {(amount_per_trade / last).toFixed(1)} shares per trade. <br></br>
-                    The sell price is then calculated by adding {percent_per_trade}% to the buy price.<br></br><br></br></Col>
-                      <Col md={5} sm={5} xs={7}>
-                      <Card md={4}>
-                      <Card.Header><h5>At ${Number(last).toFixed(2)} the trade is:</h5></Card.Header>
-                      <ListGroup variant='flush'>
-                        
-                        <ListGroup.Item>
-                          Buy Price: ${Number(last).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Sell Price: ${(Number(last)+((last * (percent_per_trade/100)))).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Trade Profit: ${((Number(last)+((last * (percent_per_trade/100)))) - (last)).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          {
-                            market === 'Crypto' ? (
-                              <>Shares Per Trade: {(amount_per_trade / last).toFixed(2)} shares</>
-                            ) : (
-                              <>Shares Per Trade: {(amount_per_trade / last).toFixed(0)} shares</>
-                            )
-                          }
-                        </ListGroup.Item>
-                        <ListGroup.Item variant='success'>
-                          Profit: ${( (last * (percent_per_trade/100)) * (amount_per_trade / last)).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item  variant='warning'>
-                          Step Total: ${((Number(last) * Number((amount_per_trade / last).toFixed(1)))).toFixed(2)}
-                        </ListGroup.Item>
-                      </ListGroup>
-                      </Card>
-                      </Col>
-                    </Row>
-                    
-                    
-                 </div>
-                 </>) : type === 'OTOCO' && (<>
-                 <div>
-                 <Row>
-                      <Col>This is just a traditional condtional OTOCO trade. All major Exchanges do this.<br></br>
-                  You set your Buy price, your profit trade Profit Sell Price (Limit Price) and your Profit Loss Sell Price (Stop Loss) trade.<br></br>  
-                  <br></br>  
-                  The profit per trade will fluctuate based on the buy price.  It is currently set to ${limit_price_in_percentage}%. <br></br> 
-                  The most the trade will lose will also fluctuate based on the buy price.  It is currently set to ${stop_price_in_percentage}%. <br></br> 
-                  <br></br>
-                    At the moment you are purchaseing {shares_per_trade} Shares per Trade every ${gap}, and selling when the price goes up {limit_price_in_percentage}% or down {stop_price_in_percentage}%.<br></br> 
-                    This means you will be purchasing {shares_per_trade} shares every ${gap} until the ladder reaches its cap of ${cap} or the budget of ${budget} is exhausted.<br></br></Col>
-                      <Col md={5} sm={5} xs={7}>
-                      <Card md={4}>
-                      <Card.Header><h5>At ${Number(last).toFixed(2)} the trade is: (per share)</h5></Card.Header>
-                      <ListGroup variant='flush'>
-                        
-                        <ListGroup.Item>
-                          Buy Price: ${Number(last).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Sell Price: ${(Number(last)+((last * (limit_price_in_percentage/100)))).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Trade Profit: ${((Number(last)+((last * (limit_price_in_percentage/100)))) - (last)).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Trade Loss: ${((Number(last)-((last * (stop_price_in_percentage/100)))) - (last)).toFixed(2)}
-                        </ListGroup.Item>
-                        
-                        <ListGroup.Item variant='danger'>
-                          Profit: ${((Number(last)+((last * (limit_price_in_percentage/100)))) - (last)).toFixed(2)} or ${((Number(last)-((last * (stop_price_in_percentage/100)))) - (last)).toFixed(2)}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Shares Per Trade: {(shares_per_trade).toFixed(0)}
-                        </ListGroup.Item>
-                      </ListGroup>
-                      </Card>
-                      </Col>
-                    </Row>
-                 </div>
-                 </>)}
+      {/* Chart Section — toggled by buttons */}
+      <div className="stock-chart-section">
+        <div className="stock-chart-header">
+          <div className="chart-view-btns">
+            <button
+              className={`chart-view-btn${activeChart === 'stock' ? ' active' : ''}`}
+              onClick={() => setActiveChart('stock')}
+            >
+              <i className="fas fa-chart-line" />
+              Stock Price
+            </button>
+            <button
+              className={`chart-view-btn${activeChart === 'profit' ? ' active' : ''}`}
+              onClick={() => setActiveChart('profit')}
+            >
+              <i className="fas fa-coins" />
+              Profit &amp; Debt
+            </button>
+          </div>
+          <div className="stock-range-btns">
+            {[['week','1W'],['month','1M'],['year','1Y'],['all','ALL']].map(([val, label]) => (
+              <button
+                key={val}
+                onClick={() => {
+                  setStockDateMethod(val)
+                  setChartDateMethod(val)
+                }}
+                className={`stock-range-btn${
+                  (activeChart === 'stock' ? stockDateMethod : chartDateMethod) === val ? ' active' : ''
+                }`}
+              >
+                {label}
+              </button>
+            ))}
+          </div>
+        </div>
+        <div className={`chart-panel${activeChart === 'stock' ? ' chart-panel--visible' : ''}`}>
+          {symbol
+            ? <LineLadderStockGraph key={ladder_id} SYMBOL={symbol} DATE_METHOD={stockDateMethod} selectedStep={selectedStep} selectedTransactionId={selectedTransactionId} ladder={!loadingLadder && ladder && ladder._id === Number(ladder_id) ? ladder : null} onStepClick={setSelectedStep} selectedStepId={selectedStepId} onStepIdClick={handleStepIdClick} />
+            : loadingLadder
+              ? <div style={{padding:'40px', textAlign:'center'}}><Loader /></div>
+              : <div className="chart-no-symbol">No symbol configured for this ladder.</div>
+          }
+        </div>
+        <div className={`chart-panel${activeChart === 'profit' ? ' chart-panel--visible' : ''}`}>
+          {!loadingLadder && ladder && ladder._id === Number(ladder_id)
+            ? <LineGraph LADDER_ID={ladder._id} DATE_METHOD={chartDateMethod} />
+            : null
+          }
+        </div>
+      </div>
 
-              </Card.Subtitle>
-              <Card.Body>
-                <Row>
-                  <Col>
-                    <Card md={4}>
-                      <Card.Header><h3>Trading {market} </h3></Card.Header>
-                      <ListGroup variant='flush'>
-                        <ListGroup.Item>
-                          Trading Direction: {direction}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Gap Between Trades: ${gap}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          
-                           {type === 'Fixed' ? 
-                            (`Shares Per Trade: ${shares_per_trade}`) : 
-                          type === 'Percentage' ? 
-                            (`Amount Per Trade: $${amount_per_trade}`) : 
-                          type === 'OTOCO' && 
-                            (`Shares Per Trade: ${shares_per_trade}`)}
-                        </ListGroup.Item>
-                        
-                          {type === 'Fixed' ? 
-                            (<ListGroup.Item>Profit Per Trade: ${profit_per_trade}</ListGroup.Item>) : 
-                          type === 'Percentage' ? 
-                            (<ListGroup.Item>Profit Percentage: {percent_per_trade}%</ListGroup.Item>) : 
-                          type === 'OTOCO' && 
-                            (<>
-                            <ListGroup.Item>Limit Price: {limit_price_in_percentage}% </ListGroup.Item>
-                            <ListGroup.Item>Stop Price: {stop_price_in_percentage}%</ListGroup.Item>
-                            </>)}
-                        
-                      </ListGroup>
-                    </Card>
-                  </Col>
-                  <Col>
-                    <Card md={4}>
-                      <Card.Header><h3>Balance</h3></Card.Header>
-                      <ListGroup variant='flush'>
-                        <ListGroup.Item>
-                          Budget: ${budget}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Debt: ${debt}
-                        </ListGroup.Item>
-                        <ListGroup.Item variant='success'>
-                          Remaining: ${(Number(budget) - Number(debt))}
-                        </ListGroup.Item>
-                      </ListGroup>
-                    </Card>
-                  </Col>
-                  
-                  <Col>
-                    <Card md={4}>
-                      <Card.Header><h3>Limits</h3></Card.Header>
-                      <ListGroup variant='flush'>
-                        <ListGroup.Item>
-                          Budget: ${budget}
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Stock Cap: ${cap}
-                        </ListGroup.Item>
-                      </ListGroup>
-                    </Card>
-                  </Col>
-                </Row>
+      <div className="ladder-layout">
+        <div className="ladder-main">
+        <>
+          {/* Ladder Steps */}
+          {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader />) : (
+            <div className="section-fade-in">
+            <LadderStepTab
+              ladder={ladder}
+              loading={loadingLadder}
+              selectedStep={selectedStep}
+              onStepClick={setSelectedStep}
+            />
+            </div>
+          )}
 
-                <Row className="py-3">
-                  <Col>
-                    <Card md={4}>
-                      <Card.Header><h3>Features {market} </h3></Card.Header>
-                      <ListGroup variant='flush'>
-                        <ListGroup.Item>
-                          Buffer 52 Week: {buffer_52_week}%
-                        </ListGroup.Item>
-                        <ListGroup.Item>
-                          Trending: {trending_decoder(trending)}
-                        </ListGroup.Item>
-                        
-                        
-                      </ListGroup>
-                    </Card>
-                  </Col>
-                  
-                </Row>
-              </Card.Body>
-            </Card>)}
-            </Tab>
-            
-        </Tabs>
-        </Col>
-      </Row>
+          {/* Open Transactions — directly below step grid */}
+          {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (<Loader />) : (
+            <div className="section-fade-in">
+            <TransactionsTable
+              ladder={ladder}
+              status='OPEN'
+              selectedStep={selectedStep}
+              onStepClick={setSelectedStep}
+            />
+            </div>
+          )}
+
+          {/* Stats */}
+          {!loadingLadder && ladder && ladder._id === Number(ladder_id) && (
+            <div className="section-fade-in">
+              <TransactionsStats ladder={ladder} selectedStepId={selectedStepId} onStepIdClick={handleStepIdClick} />
+            </div>
+          )}
+
+        </>{/* end ladder-main content */}
+        </div>{/* end ladder-main */}
+
+        {/* Right panel: Ladder Detail (desktop only) */}
+        <div className="ladder-detail-panel">
+          <div className="ldp-header">
+            <span className="ldp-title">LADDER DETAILS</span>
+            {!loadingLadder && ladder && ladder._id === Number(ladder_id) && (
+              <Button size="sm" variant="outline-warning" className="p-1 lh-1" onClick={handleEditLadder}>
+                <i className="fas fa-edit" />
+              </Button>
+            )}
+          </div>
+          {loadingLadder || !ladder || ladder._id !== Number(ladder_id) ? (
+            <div className="p-3"><Loader /></div>
+          ) : (
+            <div className="ldp-body section-fade-in">
+              <div className="ldp-section">
+                <div className="ldp-row"><span className="ldp-label">Type</span><span className="ldp-val">{type}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Created</span><span className="ldp-val">{new Date(createdAt).toLocaleDateString()}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Enabled</span><span className={`ldp-val ${enable ? 'pos' : 'neg'}`}>{enable ? 'Yes' : 'No'}</span></div>
+              </div>
+
+              <div className="ldp-section-header">AT ${Number(last).toFixed(2)}</div>
+              <div className="ldp-section">
+                <div className="ldp-row"><span className="ldp-label">Buy</span><span className="ldp-val">${Number(last).toFixed(2)}</span></div>
+                {type === 'Fixed' && <>
+                  <div className="ldp-row"><span className="ldp-label">Sell</span><span className="ldp-val">${(Number(last) + Number(profit_per_trade)).toFixed(2)}</span></div>
+                  <div className="ldp-row"><span className="ldp-label">Profit/Trade</span><span className="ldp-val pos">${(Number(profit_per_trade) * Number(shares_per_trade)).toFixed(2)}</span></div>
+                  <div className="ldp-row"><span className="ldp-label">Step Total</span><span className="ldp-val">${(Number(last) * Number(shares_per_trade)).toFixed(2)}</span></div>
+                </>}
+                {type === 'Percentage' && <>
+                  <div className="ldp-row"><span className="ldp-label">Sell</span><span className="ldp-val">${(Number(last) + (last * (percent_per_trade / 100))).toFixed(2)}</span></div>
+                  <div className="ldp-row"><span className="ldp-label">Profit/Trade</span><span className="ldp-val pos">${((last * (percent_per_trade / 100)) * (amount_per_trade / last)).toFixed(2)}</span></div>
+                  <div className="ldp-row"><span className="ldp-label">Step Total</span><span className="ldp-val">${(Number(last) * Number((amount_per_trade / last).toFixed(1))).toFixed(2)}</span></div>
+                </>}
+                {type === 'OTOCO' && <>
+                  <div className="ldp-row"><span className="ldp-label">Sell (Limit)</span><span className="ldp-val pos">${(Number(last) + (last * (limit_price_in_percentage / 100))).toFixed(2)}</span></div>
+                  <div className="ldp-row"><span className="ldp-label">Sell (Stop)</span><span className="ldp-val neg">${(Number(last) - (last * (stop_price_in_percentage / 100))).toFixed(2)}</span></div>
+                </>}
+              </div>
+
+              <div className="ldp-section-header">CONFIGURATION</div>
+              <div className="ldp-section">
+                <div className="ldp-row"><span className="ldp-label">Market</span><span className="ldp-val">{market}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Direction</span><span className="ldp-val">{direction}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Gap</span><span className="ldp-val">${gap}</span></div>
+                {type === 'Fixed' && <div className="ldp-row"><span className="ldp-label">Shares/Trade</span><span className="ldp-val">{shares_per_trade}</span></div>}
+                {type === 'Percentage' && <div className="ldp-row"><span className="ldp-label">Amt/Trade</span><span className="ldp-val">${amount_per_trade}</span></div>}
+                {type === 'OTOCO' && <div className="ldp-row"><span className="ldp-label">Shares/Trade</span><span className="ldp-val">{shares_per_trade}</span></div>}
+                {type === 'Fixed' && <div className="ldp-row"><span className="ldp-label">Profit/Trade</span><span className="ldp-val">${profit_per_trade}</span></div>}
+                {type === 'Percentage' && <div className="ldp-row"><span className="ldp-label">% Per Trade</span><span className="ldp-val">{percent_per_trade}%</span></div>}
+                {type === 'OTOCO' && <>
+                  <div className="ldp-row"><span className="ldp-label">Limit %</span><span className="ldp-val">{limit_price_in_percentage}%</span></div>
+                  <div className="ldp-row"><span className="ldp-label">Stop %</span><span className="ldp-val">{stop_price_in_percentage}%</span></div>
+                </>}
+              </div>
+
+              <div className="ldp-section-header">BALANCE</div>
+              <div className="ldp-section">
+                <div className="ldp-row"><span className="ldp-label">Budget</span><span className="ldp-val">${budget}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Debt</span><span className="ldp-val">${debt}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Remaining</span><span className={`ldp-val ${(Number(budget) - Number(debt)) < 0 ? 'neg' : 'pos'}`}>${(Number(budget) - Number(debt)).toFixed(2)}</span></div>
+              </div>
+
+              <div className="ldp-section-header">LIMITS & FEATURES</div>
+              <div className="ldp-section">
+                <div className="ldp-row"><span className="ldp-label">Cap</span><span className="ldp-val">${cap}</span></div>
+                <div className="ldp-row"><span className="ldp-label">Buffer 52wk</span><span className="ldp-val">{buffer_52_week}%</span></div>
+                <div className="ldp-row"><span className="ldp-label">Trending</span><span className="ldp-val">{trending_decoder(trending)}</span></div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>{/* end ladder-layout */}
       </>
     </div>
   )

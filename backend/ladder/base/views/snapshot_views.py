@@ -98,138 +98,85 @@ def getLadderSnapshotsChart(request, pk):
 @permission_classes([IsAuthenticated])
 def getHistoricalChart(request, symbol):
     from datetime import datetime, timedelta
-    
+
     date_method = request.GET.get('date_method', 'all')
-    
+
     # Calculate the start date based on date_method
     now = timezone.now()
     if date_method == 'day':
         start_date = now - timedelta(days=2)
-        start_tran_date = now - timedelta(days=1)
+        start_tran_ts = (now - timedelta(days=1)).timestamp()
     elif date_method == 'week':
         start_date = now - timedelta(days=8)
-        start_tran_date = now - timedelta(days=7)
+        start_tran_ts = (now - timedelta(days=7)).timestamp()
     elif date_method == 'month':
         start_date = now - timedelta(days=31)
-        start_tran_date = now - timedelta(days=30)
+        start_tran_ts = (now - timedelta(days=30)).timestamp()
     elif date_method == 'year':
         start_date = now - timedelta(days=366)
-        start_tran_date = now - timedelta(days=365)
-    else:  # 'all' or any other value
+        start_tran_ts = (now - timedelta(days=365)).timestamp()
+    else:  # 'all'
         start_date = None
-        start_tran_date = None
+        start_tran_ts = None
 
-    def parse_mixed_datetime(value):
-        if value is None:
-            return None
-
-        if isinstance(value, datetime):
-            return value
-
-        if isinstance(value, (int, float)):
-            timestamp = float(value)
-            if abs(timestamp) < 1000000000000:
-                timestamp *= 1000
-            try:
-                return datetime.fromtimestamp(timestamp / 1000)
-            except (OSError, OverflowError, ValueError):
-                return None
-
-        if isinstance(value, str):
-            raw_value = value.strip()
-            if not raw_value:
-                return None
-
-            try:
-                numeric_value = float(raw_value)
-                timestamp = numeric_value
-                if abs(timestamp) < 1000000000000:
-                    timestamp *= 1000
-                return datetime.fromtimestamp(timestamp / 1000)
-            except ValueError:
-                pass
-
-            normalized_value = raw_value.replace('Z', '+00:00')
-            try:
-                return datetime.fromisoformat(normalized_value)
-            except ValueError:
-                pass
-
-            for fmt in ('%Y-%m-%d %H:%M:%S', '%Y-%m-%d'):
-                try:
-                    return datetime.strptime(raw_value, fmt)
-                except ValueError:
-                    continue
-
-        return None
-    
-    # Filter historical data
+    # --- Historical data: use .values() to skip ORM object instantiation ---
+    hist_qs = Historical.objects.filter(symbol=symbol)
     if start_date:
-        historical_data = Historical.objects.filter(
-            symbol=symbol,
-            date__gte=start_date.strftime('%Y-%m-%d')
-        ).order_by('date')
-        transactions = Transactions.objects.filter(
-            symbol=symbol,
-            ladder__user=request.user
+        hist_qs = hist_qs.filter(date__gte=start_date.strftime('%Y-%m-%d'))
+    historicalChartData = list(hist_qs.order_by('date').values(
+        'date', 'close', 'open', 'high', 'low', 'volume', '_id'
+    ))
+    # Ensure zero fallback for null fields
+    for item in historicalChartData:
+        for field in ('close', 'open', 'high', 'low', 'volume'):
+            if item[field] is None:
+                item[field] = 0
+
+    # --- Transactions: select_related to avoid N+1 on step/ladder lookups ---
+    transactions = (
+        Transactions.objects
+        .filter(symbol=symbol, ladder__user=request.user)
+        .select_related('step', 'ladder')
+        .values(
+            '_id', 'profit', 'shares_per_trade',
+            'buy_date', 'buy_price',
+            'sell_date', 'sell_price',
+            'step___id',
         )
-    else:
-        historical_data = Historical.objects.filter(symbol=symbol).order_by('date')
-        # Get transactions for this symbol (only for the requesting user)
-        transactions = Transactions.objects.filter(symbol=symbol, ladder__user=request.user)
-    
-    
-    
-    # Build custom data structure
-    historicalChartData = []
-    if historical_data.exists():
-        for historical_item in historical_data:
-            historicalChartData.append({
-                'date': historical_item.date,
-                'close': historical_item.close if historical_item.close else 0,
-                'open': historical_item.open if historical_item.open else 0,
-                'high': historical_item.high if historical_item.high else 0,
-                'low': historical_item.low if historical_item.low else 0,
-                'volume': historical_item.volume if historical_item.volume else 0,
-                '_id': historical_item._id
-            })
-    
-    # Add transaction data
-    transactionData = []
-    start_tran_day = start_tran_date.date() if start_tran_date else None
+    )
 
-    def include_transaction_side(side_date):
-        if not start_tran_day:
+    def ts_in_range(raw_val):
+        """Return True if this raw timestamp value is >= start_tran_ts (or no filter)."""
+        if start_tran_ts is None:
             return True
-        parsed_date = parse_mixed_datetime(side_date)
-        if not parsed_date:
+        if not raw_val or raw_val == '0':
             return False
-        return parsed_date.date() >= start_tran_day
+        try:
+            return float(raw_val) >= start_tran_ts
+        except (TypeError, ValueError):
+            return False
 
-    for transaction in transactions:
-        # Add buy transaction if buy_date exists
-        if transaction.buy_date and include_transaction_side(transaction.buy_date):
+    transactionData = []
+    for t in transactions:
+        shared = {
+            'transaction_id': t['_id'],
+            'step_id': t['step___id'],
+            'profit': float(t['profit']) if t['profit'] else None,
+            'shares': float(t['shares_per_trade']) if t['shares_per_trade'] else None,
+        }
+        if t['buy_date'] and ts_in_range(t['buy_date']):
             transactionData.append({
-                'date': transaction.buy_date,
-                'price': float(transaction.buy_price) if transaction.buy_price else 0,
+                **shared,
+                'date': t['buy_date'],
+                'price': float(t['buy_price']) if t['buy_price'] else 0,
                 'side': 'buy',
-                'transaction_id': transaction._id
             })
-        
-        # Add sell transaction if sell_date exists
-        if transaction.sell_date and include_transaction_side(transaction.sell_date):
+        if t['sell_date'] and ts_in_range(t['sell_date']):
             transactionData.append({
-                'date': transaction.sell_date,
-                'price': float(transaction.sell_price) if transaction.sell_price else 0,
+                **shared,
+                'date': t['sell_date'],
+                'price': float(t['sell_price']) if t['sell_price'] else 0,
                 'side': 'sell',
-                'transaction_id': transaction._id
             })
-    
-    # Return both historical and transaction data
-    response_data = {
-        'historical': historicalChartData,
-        'transactions': transactionData
-    }
-    
-    #print("Fetching historical data for symbol:", symbol, response_data)
-    return Response(response_data)
+
+    return Response({'historical': historicalChartData, 'transactions': transactionData})

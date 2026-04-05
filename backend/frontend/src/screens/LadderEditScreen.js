@@ -1,12 +1,11 @@
 import React, { useState, useEffect, useRef } from "react";
-import { Link, useNavigate, useLocation, useParams } from "react-router-dom";
+import { useNavigate, useLocation, useParams } from "react-router-dom";
 import { useDispatch, useSelector } from "react-redux";
-import { Fade, Form, Button, Row, Col, InputGroup } from "react-bootstrap";
+import { Fade, Form, Row, Col, InputGroup } from "react-bootstrap";
 import axios from "axios";
 
 import Loader from "../components/Loader";
 import Message from "../components/Message";
-import FormContainer from "../components/FormContainer";
 import {
   detailsLadder,
   updateLadder,
@@ -174,13 +173,12 @@ function LadderEditScreen() {
       );
       return;
     }
-    
+
     const value = e.target.value;
     setSymbol(value);
-    
-    // Remove spaces and special characters for API call - symbols are alphanumeric only
+
     const sanitizedValue = value.replace(/\s+/g, '').trim();
-    
+
     if (sanitizedValue.length > 0) {
       try {
         const config = {
@@ -202,11 +200,16 @@ function LadderEditScreen() {
           );
         }
 
-        setSuggestions(response.data.securities.security || []);
-        setShowSuggestions(true);
+        // Tradier returns a single object (not array) when there's only 1 result,
+        // and returns null for securities when there are no results.
+        const raw = response?.data?.securities?.security ?? [];
+        const list = Array.isArray(raw) ? raw : [raw];
+        setSuggestions(list);
+        setShowSuggestions(list.length > 0);
       } catch (error) {
-        //console.error("Error fetching symbol suggestions:", error);
+        console.error("Symbol lookup error:", error?.response?.status, error?.message);
         setSuggestions([]);
+        setShowSuggestions(false);
       }
     } else {
       setSuggestions([]);
@@ -242,528 +245,248 @@ function LadderEditScreen() {
   };
 
   return (
-    <div>
-      {loadingLadderUpdate ? (
-        <Loader />
-      ) : errorLadderUpdate ? (
-        <Message variant="danger">{errorLadderUpdate}</Message>
-      ) : (
-        ""
-      )}
-      {loadingLadder ? (
-        <Loader />
-      ) : errorLadder ? (
-        <Message variant="danger">{errorLadder}</Message>
-      ) : (
-        ""
-      )}
+    <div className="ladder-edit-layout">
+      {loadingLadderUpdate && <Loader />}
+      {errorLadderUpdate && <Message variant="danger">{errorLadderUpdate}</Message>}
+      {loadingLadder && <Loader />}
+      {errorLadder && <Message variant="danger">{errorLadder}</Message>}
 
-      <Link to="/" className="btn btn-light my-3">
-        Go Back
-      </Link>
-      <FormContainer>
-        <h1>
-          Edit Ladder{" "}
-          <Button
-            variant="danger"
-            className="btn-sm"
-            onClick={() => deleteHandler(ladder._id)}
-          >
-            <i className="fas fa-trash"></i>
-          </Button>
-        </h1>
+      <div className="ladder-edit-header">
+        <button className="ladder-edit-back" onClick={() => navigate(location.state?.from || '/')}>← Back</button>
+        <span className="ladder-edit-title">Edit Ladder</span>
+        <button type="button" className="admin-action-btn admin-action-btn--delete" onClick={() => deleteHandler(ladder._id)}>
+          <i className="fas fa-trash" />
+        </button>
+      </div>
+
+      <div className="ladder-edit-card">
         <Form onSubmit={submitHandler}>
-          <Row>
-            <Col xs={2}>
-              <Form.Group controlId="enable">
-                <Form.Label>Enable</Form.Label>
-                <Form.Check
-                  type="switch"
-                  placeholder="Enter enable"
-                  checked={enable}
-                  onChange={(e) => setEnable(e.target.checked)}
-                ></Form.Check>
-              </Form.Group>
+
+          <Row className="mb-3">
+            <Col xs={3} md={2}>
+              <Form.Label className="ladder-edit-label">Enable</Form.Label>
+              <Form.Check type="switch" checked={enable} onChange={(e) => setEnable(e.target.checked)} className="admin-toggle" />
             </Col>
-            <Col xs={6}>
-              <Form.Group controlId="direction">
-                <Form.Label>Trading Direction</Form.Label>
-                <InputGroup className="mb-3">
-                  <Form.Check
-                    inline
-                    label="Buy"
-                    value="Buy"
-                    name="direction"
-                    type="radio"
-                    checked={direction === "Buy"}
-                    id={`inline-radio-1`}
-                    onChange={(e) => setDirection(e.target.value)}
-                  />
-                  <Form.Check
-                    inline
-                    label="Sell"
-                    value="Sell"
-                    name="direction"
-                    type="radio"
-                    checked={direction === "Sell"}
-                    id={`inline-radio-2`}
-                    onChange={(e) => setDirection(e.target.value)}
-                  />
-                  <Form.Check
-                    inline
-                    label="Both"
-                    value="Both"
-                    name="direction"
-                    type="radio"
-                    checked={direction === "Both"}
-                    id={`inline-radio-3`}
-                    onChange={(e) => setDirection(e.target.value)}
-                  />
-                </InputGroup>
-              </Form.Group>
-            </Col>
-            <Col xs={4}>
-              <Form.Group controlId="direction">
-                <Form.Label>Market</Form.Label>
-                <InputGroup className="mb-3">
-                  <Form.Check
-                    inline
-                    label="Stocks"
-                    value="Stocks"
-                    name="market"
-                    type="radio"
-                    checked={market === "Stocks"}
-                    disabled={marketLocked}
-                    id={`inline-radio-1`}
-                    onChange={handleMarketChange}
-                  />
-                  <Form.Check
-                    inline
-                    label="Crypto"
-                    value="Crypto"
-                    name="market"
-                    type="radio"
-                    checked={market === "Crypto"}
-                    disabled={marketLocked}
-                    id={`inline-radio-2`}
-                    onChange={handleMarketChange}
-                  />
-                </InputGroup>
-              </Form.Group>
+            <Col xs={9} md={5}>
+              <Form.Label className="ladder-edit-label">Trading Direction</Form.Label>
+              <div className="ladder-radio-group">
+                <Form.Check inline label="Buy" value="Buy" name="direction" type="radio" checked={direction === "Buy"} id="dir-buy" onChange={(e) => setDirection(e.target.value)} />
+                <Form.Check inline label="Sell" value="Sell" name="direction" type="radio" checked={direction === "Sell"} id="dir-sell" onChange={(e) => setDirection(e.target.value)} />
+                <Form.Check inline label="Both" value="Both" name="direction" type="radio" checked={direction === "Both"} id="dir-both" onChange={(e) => setDirection(e.target.value)} />
+              </div>
             </Col>
           </Row>
 
-          <Row>
-            <Col xs={6}>
-              <Form.Label>Symbol</Form.Label>
-              <Form.Control
-                type="symbol"
-                placeholder="Enter Symbol"
-                value={symbol}
-                disabled={symbolLocked}
-                onChange={handleLookupSymbol}
-              ></Form.Control>
+          <div className="ladder-section-header">Market</div>
+          <Row className="mb-3">
+            <Col>
+              <div className="ladder-radio-group">
+                <Form.Check inline label="Stocks" value="Stocks" name="market" type="radio" checked={market === "Stocks"} disabled={marketLocked} id="mkt-stocks" onChange={handleMarketChange} />
+                <Form.Check inline label="Crypto" value="Crypto" name="market" type="radio" checked={market === "Crypto"} disabled={marketLocked} id="mkt-crypto" onChange={handleMarketChange} />
+              </div>
+            </Col>
+          </Row>
+
+          <Row className="mb-3">
+            <Col xs={6} className="position-relative">
+              <Form.Label className="ladder-edit-label">Symbol</Form.Label>
+              <Form.Control type="text" placeholder="Enter Symbol" value={symbol} disabled={symbolLocked} onChange={handleLookupSymbol} className="dark-input" />
               {showSuggestions && suggestions.length > 0 && (
-                <ul
-                  className="list-group position-absolute w-100 mt-1"
-                  style={{ 
-                    zIndex: 1000,
-                    maxHeight: '50vh',
-                    overflowY: 'auto',
-                    boxShadow: '0 4px 6px rgba(0,0,0,0.1)'
-                  }}
-                >
+                <ul className="ladder-suggestions">
                   {suggestions.map((item, index) => (
-                    <li
-                      key={index}
-                      className="list-group-item list-group-item-action"
-                      onClick={() =>
-                        handleSelection(item.symbol, item.description)
-                      }
-                      style={{ cursor: "pointer" }}
-                    >
-                      {item.symbol} - {item.description}
+                    <li key={index} className="ladder-suggestion-item" onClick={() => handleSelection(item.symbol, item.description)}>
+                      {item.symbol} — {item.description}
                     </li>
                   ))}
                 </ul>
               )}
             </Col>
             <Col xs={6}>
-              <Form.Label>Symbol Name</Form.Label>
-              <Form.Control
-                type="symbol name"
-                disabled
-                value={symbolName}
-                onChange={(e) => setSymbolName(e.target.value)}
-              ></Form.Control>
+              <Form.Label className="ladder-edit-label">Symbol Name</Form.Label>
+              <Form.Control type="text" disabled value={symbolName} onChange={(e) => setSymbolName(e.target.value)} className="dark-input" />
             </Col>
           </Row>
 
-          <Row>
+          <Row className="mb-3">
             <Col>
-              <Form.Group controlId="name">
-                <Form.Label>Ladder Name</Form.Label>
-                <Form.Control
-                  type="name"
-                  placeholder="Enter name"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
-                ></Form.Control>
-              </Form.Group>
+              <Form.Label className="ladder-edit-label">Ladder Name</Form.Label>
+              <Form.Control type="text" placeholder="Enter name" value={name} onChange={(e) => setName(e.target.value)} className="dark-input" />
             </Col>
           </Row>
 
-          <Row className="mt-3">
-            <h2>Type</h2>
-            <hr></hr>
-            <Col xs={6}>
-              <Form.Group controlId="type">
-                <InputGroup className="mb-3">
-                  <Form.Check
-                    inline
-                    label="Fixed"
-                    value="Fixed"
-                    name="type"
-                    type="radio"
-                    checked={type === "Fixed"}
-                    id={`inline-radio-1`}
-                    onChange={(e) => setType(e.target.value)}
-                    disabled={typeLocked || market === "Crypto"}
-                  />
-                  <Form.Check
-                    inline
-                    label="Percentage"
-                    value="Percentage"
-                    name="type"
-                    type="radio"
-                    checked={type === "Percentage"}
-                    id={`inline-radio-2`}
-                    onChange={(e) => setType(e.target.value)}
-                    disabled={typeLocked}
-                  />
-                  <Form.Check
-                    inline
-                    label="OTOCO"
-                    value="OTOCO"
-                    name="type"
-                    type="radio"
-                    checked={type === "OTOCO"}
-                    id={`inline-radio-3`}
-                    onChange={(e) => setType(e.target.value)}
-                    disabled={typeLocked || market === "Crypto"}
-                  />
-                </InputGroup>
-              </Form.Group>
+          <div className="ladder-section-header">Type</div>
+          <Row className="mb-3">
+            <Col>
+              <div className="ladder-radio-group">
+                <Form.Check inline label="Fixed" value="Fixed" name="type" type="radio" checked={type === "Fixed"} id="type-fixed" onChange={(e) => setType(e.target.value)} disabled={typeLocked || market === "Crypto"} />
+                <Form.Check inline label="Percentage" value="Percentage" name="type" type="radio" checked={type === "Percentage"} id="type-pct" onChange={(e) => setType(e.target.value)} disabled={typeLocked} />
+                <Form.Check inline label="OTOCO" value="OTOCO" name="type" type="radio" checked={type === "OTOCO"} id="type-otoco" onChange={(e) => setType(e.target.value)} disabled={typeLocked || market === "Crypto"} />
+              </div>
             </Col>
           </Row>
 
-          <Row className="mt-3">
-            <h2>Limits</h2>
-            <hr></hr>
+          <div className="ladder-section-header">Limits</div>
+          <Row className="mb-3">
             <Col xs={6}>
-              <Form.Group controlId="budget">
-                <Form.Label>Ladder Budget</Form.Label>
-                <br></br>
-                <Form.Text> Ladder debt limit </Form.Text>
-                <InputGroup className="mb-3">
-                  <InputGroup.Text>$</InputGroup.Text>
-                  <Form.Control
-                    type="number"
-                    step={10}
-                    min={0}
-                    placeholder="Enter budget"
-                    value={budget}
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Only update if it's empty or a valid whole number
-                      if (value === "" || Number.isInteger(Number(value))) {
-                        setBudget(value === "" ? "" : Number(value)); // store as number or empty string
-                      }
-                    }}
-                  ></Form.Control>
-                  <InputGroup.Text>.00</InputGroup.Text>
-                </InputGroup>
-              </Form.Group>
+              <Form.Label className="ladder-edit-label">Ladder Budget <span className="ladder-edit-hint">Ladder debt limit</span></Form.Label>
+              <InputGroup>
+                <InputGroup.Text className="dark-input-addon">$</InputGroup.Text>
+                <Form.Control type="number" step={10} min={0} placeholder="Enter budget" value={budget} className="dark-input"
+                  onChange={(e) => { const v = e.target.value; if (v === "" || Number.isInteger(Number(v))) setBudget(v === "" ? "" : Number(v)); }}
+                />
+                <InputGroup.Text className="dark-input-addon">.00</InputGroup.Text>
+              </InputGroup>
             </Col>
             <Col>
-              <Form.Group controlId="gap">
-                <Form.Label>Gap</Form.Label>
-                <br></br>
-                <Form.Text> How often the Buy Trade is triggered </Form.Text>
-                <InputGroup className="mb-3">
-                  <InputGroup.Text>$</InputGroup.Text>
-                  <Form.Control
-                    type="number"
-                    placeholder="Enter gap"
-                    value={gap}
-                    onChange={(e) => setGap(e.target.value)}
-                  ></Form.Control>
-                </InputGroup>
-              </Form.Group>
+              <Form.Label className="ladder-edit-label">Gap <span className="ladder-edit-hint">How often the Buy Trade triggers</span></Form.Label>
+              <InputGroup>
+                <InputGroup.Text className="dark-input-addon">$</InputGroup.Text>
+                <Form.Control type="number" placeholder="Enter gap" value={gap} className="dark-input" onChange={(e) => setGap(e.target.value)} />
+              </InputGroup>
             </Col>
           </Row>
 
-          <Row>
+          <Row className="mb-3">
             <Col xs={6}>
-              <Form.Group controlId="cap">
-                <Form.Label>Stock Price Cap </Form.Label>
-                <br></br>
-                <Form.Text>
-                  {" "}
-                  Make sure to set this above the symbol price
-                </Form.Text>
-                {type === "Percentage" && market === "Stocks" && (
-                  <>
-                    <br></br>
-                    <Form.Text> Must be more than Amount Per Trade</Form.Text>
-                  </>
-                )}
-                <InputGroup className="mb-3">
-                  <InputGroup.Text>$</InputGroup.Text>
-                  <Form.Control
-                    type="number"
-                    step="1"
-                    min="0"
-                    placeholder="Enter cap"
-                    value={
-                      (cap > amount_per_trade && market === "Stocks") ||
-                      market === "Crypto"
-                        ? cap
-                        : amount_per_trade
-                    }
-                    onChange={(e) => {
-                      const value = e.target.value;
-                      // Only update if it's empty or a valid whole number
-                      if (value === "" || Number.isInteger(Number(value))) {
-                        setCap(value === "" ? "" : Number(value)); // store as number or empty string
-                      }
-                    }}
-                  ></Form.Control>
-                  <InputGroup.Text>.00</InputGroup.Text>
-                </InputGroup>
-              </Form.Group>
+              <Form.Label className="ladder-edit-label">
+                Stock Price Cap
+                <span className="ladder-edit-hint"> Must be above symbol price{type === "Percentage" && market === "Stocks" && " · Must exceed Amount Per Trade"}</span>
+              </Form.Label>
+              <InputGroup>
+                <InputGroup.Text className="dark-input-addon">$</InputGroup.Text>
+                <Form.Control type="number" step="1" min="0" placeholder="Enter cap" className="dark-input"
+                  value={(cap > amount_per_trade && market === "Stocks") || market === "Crypto" ? cap : amount_per_trade}
+                  onChange={(e) => { const v = e.target.value; if (v === "" || Number.isInteger(Number(v))) setCap(v === "" ? "" : Number(v)); }}
+                />
+                <InputGroup.Text className="dark-input-addon">.00</InputGroup.Text>
+              </InputGroup>
             </Col>
-
             <Col>
-              <Form.Group controlId="shares_per_trade">
-                <Form.Label>Shares Per Trade (SPT)</Form.Label>
-                <Form.Control
-                  type="number"
-                  placeholder="Enter shares per trade"
-                  value={
-                    type === "Percentage" && market === "Stocks"
-                      ? 0.0
-                      : shares_per_trade
-                  }
-                  disabled={type === "Percentage"}
-                  onChange={(e) => setSharesPerTrade(e.target.value)}
-                ></Form.Control>
-              </Form.Group>
+              <Form.Label className="ladder-edit-label">Shares Per Trade (SPT)</Form.Label>
+              <Form.Control type="number" placeholder="Enter shares per trade" className="dark-input"
+                value={type === "Percentage" && market === "Stocks" ? 0.0 : shares_per_trade}
+                disabled={type === "Percentage"}
+                onChange={(e) => setSharesPerTrade(e.target.value)}
+              />
             </Col>
           </Row>
 
-          <h2>Pricing</h2>
-          <hr></hr>
+          <div className="ladder-section-header">Pricing</div>
 
           <Fade in={type === "Fixed" && priceVisible} unmountOnExit>
-            <Row
-              className={`mt-3 transition-fade ${
-                type === "Fixed" ? "show" : ""
-              }`}
-            >
+            <Row className="mb-3">
               <Col>
-                <Form.Label>Fixed</Form.Label>
-                <Form.Group controlId="profit_per_trade">
-                  <Form.Label>Profit Per Trade (PPT)</Form.Label>
-                  <br></br>
-                  <Form.Text>
-                    {" "}
-                    Buy_price + Profit Per Trade = Sell Price{" "}
-                  </Form.Text>
-                  <InputGroup className="mb-3">
-                    <InputGroup.Text>$</InputGroup.Text>
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter profit per trade"
-                      value={profit_per_trade}
-                      onChange={(e) => setProfitPerTrade(e.target.value)}
-                      disabled={
-                        market === "Crypto" ||
-                        type === "Percentage" ||
-                        type === "OTOCO"
-                      }
-                    ></Form.Control>
-                  </InputGroup>
-                </Form.Group>
+                <Form.Label className="ladder-edit-label">Profit Per Trade (PPT) <span className="ladder-edit-hint">Buy price + PPT = Sell Price</span></Form.Label>
+                <InputGroup>
+                  <InputGroup.Text className="dark-input-addon">$</InputGroup.Text>
+                  <Form.Control type="number" placeholder="Enter profit per trade" value={profit_per_trade} className="dark-input"
+                    onChange={(e) => setProfitPerTrade(e.target.value)}
+                    disabled={market === "Crypto" || type === "Percentage" || type === "OTOCO"}
+                  />
+                </InputGroup>
               </Col>
             </Row>
           </Fade>
+
           <Fade in={type === "Percentage" && priceVisible} unmountOnExit>
-            <Row
-              className={`mt-3 transition-fade ${
-                type === "Percentage" ? "show" : ""
-              }`}
-            >
-              <Form.Label>Percent of Amount Per Trade</Form.Label>
+            <Row className="mb-3">
               <Col className="border-end">
-                <Form.Group controlId="percent_per_trade">
-                  <Form.Label>Percent Per Trade</Form.Label>
-                  <InputGroup className="mb-3">
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter Percent Per Trade"
-                      value={percent_per_trade}
-                      onChange={(e) => setPercentPerTrade(Math.floor(e.target.value))}
-                      disabled={type === "Fixed" || type === "OTOCO"}
-                    ></Form.Control>
-                    <InputGroup.Text>%</InputGroup.Text>
-                  </InputGroup>
-                </Form.Group>
+                <Form.Label className="ladder-edit-label">Percent Per Trade</Form.Label>
+                <InputGroup>
+                  <Form.Control type="number" placeholder="Enter Percent Per Trade" value={percent_per_trade} className="dark-input"
+                    onChange={(e) => setPercentPerTrade(Math.floor(e.target.value))}
+                    disabled={type === "Fixed" || type === "OTOCO"}
+                  />
+                  <InputGroup.Text className="dark-input-addon">%</InputGroup.Text>
+                </InputGroup>
               </Col>
               <Col>
-                <Form.Group controlId="amount_per_trade">
-                  <Form.Label>Amount Per Trade</Form.Label>
-
-                  <InputGroup className="mb-3">
-                    <InputGroup.Text>$</InputGroup.Text>
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter Amount Per Trade"
-                      value={amount_per_trade}
-                      onChange={(e) => setAmountPerTrade(Math.floor(e.target.value))}
-                      step={1}
-                      disabled={type === "Fixed" || type === "OTOCO"}
-                    ></Form.Control>
-                    <InputGroup.Text>.00</InputGroup.Text>
-                  </InputGroup>
-                </Form.Group>
+                <Form.Label className="ladder-edit-label">Amount Per Trade</Form.Label>
+                <InputGroup>
+                  <InputGroup.Text className="dark-input-addon">$</InputGroup.Text>
+                  <Form.Control type="number" placeholder="Enter Amount Per Trade" value={amount_per_trade} className="dark-input"
+                    onChange={(e) => setAmountPerTrade(Math.floor(e.target.value))}
+                    step={1}
+                    disabled={type === "Fixed" || type === "OTOCO"}
+                  />
+                  <InputGroup.Text className="dark-input-addon">.00</InputGroup.Text>
+                </InputGroup>
               </Col>
             </Row>
           </Fade>
+
           <Fade in={type === "OTOCO" && priceVisible} unmountOnExit>
-            <Row
-              className={`mt-3 transition-fade ${
-                type === "OTOCO" ? "show" : ""
-              }`}
-            >
-              <Form.Label>OTOCO</Form.Label>
+            <Row className="mb-3">
               <Col className="border-end">
-                <Form.Group controlId="limit_price_in_percentage">
-                  <Form.Label>Limit Price in Percentage</Form.Label>
-                  <InputGroup className="mb-3">
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter limit price in percentage"
-                      value={limit_price_in_percentage}
-                      onChange={(e) =>
-                        setLimitPriceInPercentage(Math.floor(e.target.value))
-                      }
-                      disabled={
-                        market === "Crypto" ||
-                        type === "Fixed" ||
-                        type === "Percentage"
-                      }
-                    ></Form.Control>
-                    <InputGroup.Text>%</InputGroup.Text>
-                  </InputGroup>
-                </Form.Group>
+                <Form.Label className="ladder-edit-label">Limit Price in Percentage</Form.Label>
+                <InputGroup>
+                  <Form.Control type="number" placeholder="Enter limit price in percentage" value={limit_price_in_percentage} className="dark-input"
+                    onChange={(e) => setLimitPriceInPercentage(Math.floor(e.target.value))}
+                    disabled={market === "Crypto" || type === "Fixed" || type === "Percentage"}
+                  />
+                  <InputGroup.Text className="dark-input-addon">%</InputGroup.Text>
+                </InputGroup>
               </Col>
               <Col>
-                <Form.Group controlId="stop_price_in_percentage">
-                  <Form.Label>Stop Price in Percentage</Form.Label>
-                  <InputGroup className="mb-3">
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter stop price in percentage"
-                      value={stop_price_in_percentage}
-                      onChange={(e) => setStopPriceInPercentage(Math.floor(e.target.value))}
-                      disabled={
-                        market === "Crypto" ||
-                        type === "Fixed" ||
-                        type === "Percentage"
-                      }
-                    ></Form.Control>
-                    <InputGroup.Text>%</InputGroup.Text>
-                  </InputGroup>
-                </Form.Group>
-              </Col>
-            </Row>
-          </Fade>
-          <hr></hr>
-          <h1 className="text-center">Features</h1>
-          <hr></hr>
-          <h5>52 Week Buffer</h5>
-          <hr></hr>
-          <Fade in={market === "Stocks" && priceVisible} unmountOnExit>
-            <Row className={`mt-3 transition-fade ${
-                market === "Stocks" ? "show" : ""
-              }`} >
-              <Col>
-                <p style={{color:'black', fontStyle:'italic'}}>
-                  For stocks only. <br></br> This feature stops the ladder from setting buy trades, If the price gets within this buffer percentage window. We hold all Buys. That way you're not stuck with 52 week high debt for 52 weeks. It is recommended to set the buffer to at least 3% to account for volatility.  Enjoy.
-                </p>
-              </Col>
-              <Col>
-                <Form.Group controlId="buffer_52_week">
-                  <Form.Label>52 Week Buffer</Form.Label>
-                  <InputGroup className="mb-3">
-                    <Form.Control
-                      type="number"
-                      placeholder="Enter 52 week buffer in percentage"
-                      value={buffer_52_week}
-                      onChange={(e) => {
-                        const oneDigit = e.target.value.replace(/\D/g, "").slice(0, 1); // max 1 char
-                        setBuffer52Week(oneDigit === "" ? 0 : Number(oneDigit));
-                      }}
-                      min={0}
-                      max={9}
-                      step={1}
-                      disabled={ market === "Crypto" }
-                    ></Form.Control>
-                    <InputGroup.Text>%</InputGroup.Text>
-                  </InputGroup>
-                </Form.Group>
-              </Col>
-            </Row>
-          </Fade>
-          <hr></hr>
-          <h5>Trending</h5>
-          <hr></hr>
-          <Fade in={market === "Stocks" && priceVisible} unmountOnExit>
-            <Row className={`mt-3 transition-fade ${
-                market === "Stocks" ? "show" : ""
-              }`} >
-              <Col>
-                <p style={{color:'black', fontStyle:'italic'}}>
-                  For stocks only. <br></br> No one wants to Buy stocks when the stock is trending downwards right? Here you can set the 24 Hour % so the ladder stops placing Buy Trades if the % is negative. the other option is called Run Away Train. It never stops until the budget is exhausted. This feature will be updated in the future with more controls. Enjoy.
-                </p>
-              </Col>
-              <Col>
-                <Form.Group controlId="trending">
-                  <Form.Label>Trending</Form.Label>
-                  <Form.Select
-                    value={trending}
-                    onChange={(e) => setTrending(e.target.value)}
-                    disabled={market === "Crypto"}
-                  >
-                    <option value="RUN_AWAY">Run Away Train</option>
-                    <option value="HOUR_24">24 Hour % Change</option>
-                  </Form.Select>
-                </Form.Group>
+                <Form.Label className="ladder-edit-label">Stop Price in Percentage</Form.Label>
+                <InputGroup>
+                  <Form.Control type="number" placeholder="Enter stop price in percentage" value={stop_price_in_percentage} className="dark-input"
+                    onChange={(e) => setStopPriceInPercentage(Math.floor(e.target.value))}
+                    disabled={market === "Crypto" || type === "Fixed" || type === "Percentage"}
+                  />
+                  <InputGroup.Text className="dark-input-addon">%</InputGroup.Text>
+                </InputGroup>
               </Col>
             </Row>
           </Fade>
 
-          <Row>
-            <Col>
-              <Button className="my-3" type="submit" variant="primary">
-                Update Ladder
-              </Button>
-            </Col>
-            <Col></Col>
-          </Row>
+          <div className="ladder-section-header">Features</div>
+
+          <div className="ladder-subsection-header">52 Week Buffer</div>
+          <Fade in={market === "Stocks" && priceVisible} unmountOnExit>
+            <Row className="mb-3">
+              <Col>
+                <p className="ladder-edit-desc">
+                  For stocks only. Stops the ladder from setting buy trades if the price gets within this buffer window — preventing 52-week high debt. Recommended: at least 3% to account for volatility.
+                </p>
+              </Col>
+              <Col>
+                <Form.Label className="ladder-edit-label">52 Week Buffer</Form.Label>
+                <InputGroup>
+                  <Form.Control type="number" placeholder="Enter buffer %" value={buffer_52_week} className="dark-input"
+                    onChange={(e) => { const oneDigit = e.target.value.replace(/\D/g, "").slice(0, 1); setBuffer52Week(oneDigit === "" ? 0 : Number(oneDigit)); }}
+                    min={0} max={9} step={1} disabled={market === "Crypto"}
+                  />
+                  <InputGroup.Text className="dark-input-addon">%</InputGroup.Text>
+                </InputGroup>
+              </Col>
+            </Row>
+          </Fade>
+
+          <div className="ladder-subsection-header">Trending</div>
+          <Fade in={market === "Stocks" && priceVisible} unmountOnExit>
+            <Row className="mb-3">
+              <Col>
+                <p className="ladder-edit-desc">
+                  For stocks only. Stops placing Buy Trades when the 24-hour % change is negative. "Run Away Train" never stops until the budget is exhausted.
+                </p>
+              </Col>
+              <Col>
+                <Form.Label className="ladder-edit-label">Trending</Form.Label>
+                <Form.Select value={trending} onChange={(e) => setTrending(e.target.value)} disabled={market === "Crypto"} className="dark-input">
+                  <option value="RUN_AWAY">Run Away Train</option>
+                  <option value="HOUR_24">24 Hour % Change</option>
+                </Form.Select>
+              </Col>
+            </Row>
+          </Fade>
+
+          <div className="ladder-edit-footer">
+            <button type="submit" className="prof-btn ladder-save-btn">Update Ladder</button>
+          </div>
+
         </Form>
-      </FormContainer>
+      </div>
     </div>
   );
 }

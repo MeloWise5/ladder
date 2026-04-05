@@ -5,23 +5,110 @@ body {
     sans-serif;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  background-color: #0d1117;
+  color: #e6edf3;
 }
 
 code {
   font-family: source-code-pro, Menlo, Monaco, Consolas, 'Courier New',
     monospace;
 }
+
 main {
-  min-height: 90vh;
-}
-#navbarScrollingDropdown::before {
-  content: "\f007";
-  font-family: "Font Awesome 5 Free";
-  font-weight: 900;
-  padding-right: 8px;
+  min-height: calc(100vh - 54px);
+  display: flex;
+  flex-direction: column;
 }
 
-/* Horizontal on small screens, vertical on large screens */
+/* Bootstrap overrides for dark theme */
+.card {
+  background-color: #1c2230 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+.list-group-item {
+  background-color: transparent !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+.form-control, .form-select {
+  background-color: #1c2230 !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+.form-control:focus, .form-select:focus {
+  border-color: #3374ff !important;
+  box-shadow: 0 0 0 0.2rem rgba(51, 116, 255, 0.25) !important;
+}
+
+.form-control::placeholder {
+  color: #6e7681 !important;
+}
+
+.form-check-label {
+  color: #8b949e;
+}
+
+.table {
+  color: #e6edf3 !important;
+  border-color: #30363d !important;
+}
+
+.table > :not(caption) > * > * {
+  background-color: transparent !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd) > * {
+  background-color: rgba(255,255,255,0.03) !important;
+}
+
+.table-hover > tbody > tr:hover > * {
+  background-color: rgba(51,116,255,0.06) !important;
+}
+
+.btn-secondary {
+  background-color: #30363d !important;
+  border-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+.btn-outline-secondary {
+  border-color: #30363d !important;
+  color: #8b949e !important;
+}
+
+.btn-outline-secondary:hover {
+  background-color: #30363d !important;
+  color: #e6edf3 !important;
+}
+
+.text-muted {
+  color: #8b949e !important;
+}
+
+.border, .border-top, .border-bottom, .border-start, .border-end {
+  border-color: #30363d !important;
+}
+
+hr {
+  border-color: #30363d !important;
+  opacity: 1;
+}
+
+.bg-light {
+  background-color: #1c2230 !important;
+}
+
+.bg-white {
+  background-color: #1c2230 !important;
+}
+
+/* Keep list-group-vertical for ladder steps */
 .list-group-vertical {
   flex-direction: row !important;
 }
@@ -36,7 +123,7 @@ main {
   .list-group-vertical {
     flex-direction: column !important;
   }
-  
+
   .list-group-vertical .list-group-item {
     width: 100% !important;
     border-right-width: 0 !important;

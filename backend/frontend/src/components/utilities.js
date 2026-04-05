@@ -30,5 +30,5 @@ export const formatDate = (input) => {
   hours = hours % 12;
   hours = hours ? hours : 12;
 
-  return `${month}/${day}/${year.toString().padStart(2, '0')} : ${hours}:${minutes}:${seconds}${ampm}`;
+  return `${month}/${day}/${year.toString().padStart(2, '0')} : ${hours}:${minutes}${ampm}`;
 };

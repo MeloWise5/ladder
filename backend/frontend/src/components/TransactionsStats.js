@@ -6,18 +6,21 @@ import Loader from './Loader'
 import { getUserDetails } from '../actions/userActions'
 
 
-function TransactionsStats({ladder=false}) {
+function TransactionsStats({ladder=false, selectedStepId=null, onStepIdClick=null}) {
   const hasLoadedUser = useRef(false)
   const dispatch = useDispatch()
   const navigate = useNavigate()
   const userDetails = useSelector(state => state.userDetails)
-  const {loading, error, user} = userDetails
+  const {loading: userLoading, error, user} = userDetails
+  // Only fetch user profile when not in ladder mode (global stats view)
   useEffect(() => {
-    if((!user || !user.name) && !hasLoadedUser.current){
+    if(!ladder && (!user || !user.name) && !hasLoadedUser.current){
       dispatch(getUserDetails('profile'))
       hasLoadedUser.current = true
     }
-  }, [dispatch, user?.name])
+  }, [dispatch, user?.name, ladder])
+  // When ladder prop is provided, data is already available — don't block on user API
+  const loading = ladder ? false : userLoading
   
   const transaction_report = useMemo(() => {
     //console.log('ladder prop:', ladder);
@@ -49,89 +52,81 @@ function TransactionsStats({ladder=false}) {
     //console.log('useMemo recalculating - avg_buy_days:', transactions_stats.avg_buy_days);
     
     return (
-      <>
-      <Row>
-        <Col lg={6}>
-          <Card style={{ border: '0px solid darkgrey' }}>
-            <Card.Body>
-              {loading ? (
-                <Loader />
-              ) : (
-                <ListGroup><ListGroup.Item className='text-center'><h4>{transactions_stats.open_transaction_count} Open | {transactions_stats.closed_transaction_count} Closed Transactions</h4></ListGroup.Item>
-                  <ListGroup.Item>
-                    <Row>
-                      <Col><h5>Avg Buy Days</h5></Col>
-                      <Col>{transactions_stats.avg_buy_days} </Col>
-                    </Row>
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    <Row>
-                      <Col><h5>Avg Sell Days</h5></Col>
-                      <Col>{transactions_stats.avg_sell_days} </Col>
-                    </Row>
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    <Row>
-                      <Col><h5>Trades Per Day</h5></Col>
-                      <Col>{transactions_stats.avg_trades_per_day} </Col>
-                    </Row>
-                  </ListGroup.Item>
-                  <ListGroup.Item>
-                    <Row>
-                      <Col><h5>Profit Per Day</h5></Col>
-                      <Col>${transactions_stats.avg_profit_per_day} </Col>
-                    </Row>
-                  </ListGroup.Item>
-                </ListGroup>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-        <Col lg={6}>
-          <Card style={{ border: '0px solid darkgrey' }}  >
-            <Card.Body>
-              {loading ? (
-                <Loader />
-              ) : (
-                <ListGroup>
-                  <ListGroup.Item className='text-center'><h4>Top 5</h4></ListGroup.Item>
-                    <ListGroup.Item><Row><Col>
-                
-                  <h6>Days by Profit:</h6>
-                  <ListGroup>
-                  {transactions_stats.top_5_days_by_profit && transactions_stats.top_5_days_by_profit.length > 0 ? (
-                    transactions_stats.top_5_days_by_profit.map((day, index) => (
-                      <ListGroup.Item key={index}>
-                        {day.date}: ${day.profit}
-                      </ListGroup.Item>
-                    ))
-                  ) : (
-                    <ListGroup.Item>No data available</ListGroup.Item>
-                  )}</ListGroup>
-                
-                </Col><Col>
-              
-                  <h6>Steps by Profit:</h6>
-                  <ListGroup>
-                  {transactions_stats.top_5_steps_by_profit && transactions_stats.top_5_steps_by_profit.length > 0 ? (
-                    transactions_stats.top_5_steps_by_profit.map((step, index) => (
-                      <ListGroup.Item key={index}>
-                        <b>{step.step_code}</b> | <i>{typeof step.price === 'number' ? `$${step.price.toFixed(2)}` : step.price}</i> : ${typeof step.profit === 'number' ? step.profit.toFixed(2) : step.profit}
-                      </ListGroup.Item>
-                    ))
-                  ) : (
-                    <ListGroup.Item>No data available</ListGroup.Item>
-                  )}</ListGroup>
-                </Col></Row></ListGroup.Item>
-                </ListGroup>
-              )}
-            </Card.Body>
-          </Card>
-        </Col>
-      </Row>
-      </>
+      <div className="txn-stats-grid">
+        {/* Card 1 — Trade Averages */}
+        <div className="txn-stats-card">
+          <div className="txn-stats-card-header">
+            <span className="txn-stats-title">TRANSACTIONS</span>
+            <span className="txn-stats-badge">
+              {transactions_stats.open_transaction_count} Open &nbsp;·&nbsp; {transactions_stats.closed_transaction_count} Closed
+            </span>
+          </div>
+          {loading ? <Loader /> : (
+            <div className="txn-stats-body">
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Avg Buy Days</span>
+                <span className="txn-stats-val">{transactions_stats.avg_buy_days}</span>
+              </div>
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Avg Sell Days</span>
+                <span className="txn-stats-val">{transactions_stats.avg_sell_days}</span>
+              </div>
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Trades Per Day</span>
+                <span className="txn-stats-val">{transactions_stats.avg_trades_per_day}</span>
+              </div>
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Profit Per Day</span>
+                <span className="txn-stats-val pos">${transactions_stats.avg_profit_per_day}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card 2 — Top 5 */}
+        <div className="txn-stats-card">
+          <div className="txn-stats-card-header">
+            <span className="txn-stats-title">TOP 5</span>
+          </div>
+          {loading ? <Loader /> : (
+            <div className="txn-stats-top5">
+              <div className="txn-stats-top5-col">
+                <div className="txn-stats-col-label">Days by Profit</div>
+                {transactions_stats.top_5_days_by_profit?.length > 0 ? (
+                  transactions_stats.top_5_days_by_profit.map((day, i) => (
+                    <div key={i} className="txn-stats-row">
+                      <span className="txn-stats-label">{day.date}</span>
+                      <span className="txn-stats-val pos">${day.profit}</span>
+                    </div>
+                  ))
+                ) : <div className="txn-stats-empty">No data</div>}
+              </div>
+              <div className="txn-stats-top5-divider" />
+              <div className="txn-stats-top5-col">
+                <div className="txn-stats-col-label">Steps by Profit</div>
+                {transactions_stats.top_5_steps_by_profit?.length > 0 ? (
+                  transactions_stats.top_5_steps_by_profit.map((step, i) => (
+                    <div key={i}
+                      className={`txn-stats-row txn-stats-row--clickable${selectedStepId === step.step_id ? ' txn-stats-row--active' : ''}`}
+                      onClick={() => onStepIdClick && onStepIdClick(selectedStepId === step.step_id ? null : step.step_id)}
+                    >
+                      <span className="txn-stats-label">
+                        <b>{step.step_code}</b> &nbsp;
+                        <i>{typeof step.price === 'number' ? `$${step.price.toFixed(2)}` : step.price}</i>
+                      </span>
+                      <span className="txn-stats-val pos">
+                        ${typeof step.profit === 'number' ? step.profit.toFixed(2) : step.profit}
+                      </span>
+                    </div>
+                  ))
+                ) : <div className="txn-stats-empty">No data</div>}
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
       );
-    }, [user, ladder, loading]);
+    }, [user, ladder, loading, selectedStepId, onStepIdClick]);
   return (
     <>
       {transaction_report}
