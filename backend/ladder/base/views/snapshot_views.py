@@ -96,6 +96,70 @@ def getLadderSnapshotsChart(request, pk):
 
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def getLadderSnapshotsBreakdown(request, pk):
+    """Return per-ladder profit/debt series for a stacked breakdown chart."""
+    from datetime import datetime, timedelta
+    from collections import defaultdict
+
+    date_method = request.GET.get('date_method', 'all')
+    now = timezone.now()
+    if date_method == 'week':
+        start_date = now - timedelta(weeks=1)
+    elif date_method == 'month':
+        start_date = now - timedelta(days=30)
+    elif date_method == 'year':
+        start_date = now - timedelta(days=365)
+    else:
+        start_date = None
+
+    user_ladders = Ladders.objects.filter(user=request.user)
+
+    if start_date:
+        snapshot_qs = Snapshot.objects.filter(
+            ladder__in=user_ladders,
+            date__gte=start_date.strftime('%Y-%m-%d')
+        ).order_by('date').select_related('ladder')
+    else:
+        snapshot_qs = Snapshot.objects.filter(
+            ladder__in=user_ladders
+        ).order_by('date').select_related('ladder')
+
+    # Collect all dates (sorted unique) and per-ladder data
+    all_dates = sorted(set(str(s.date) for s in snapshot_qs))
+
+    # Build { ladder_id: { date: {profit, debt} } }
+    ladder_map = {}   # id -> {name, by_date}
+    for snap in snapshot_qs:
+        lid = snap.ladder._id
+        lname = snap.ladder.name
+        date_key = str(snap.date)
+        if lid not in ladder_map:
+            ladder_map[lid] = {'id': lid, 'name': lname, 'by_date': {}}
+        ladder_map[lid]['by_date'][date_key] = {
+            'profit': round(float(snap.profit) if snap.profit else 0.0, 2),
+            'debt': round(float(snap.debt) if snap.debt else 0.0, 2),
+        }
+
+    # Build aligned arrays (None = no data for that date)
+    ladders_out = []
+    for lid, ldata in ladder_map.items():
+        profit_arr = []
+        debt_arr = []
+        for d in all_dates:
+            entry = ldata['by_date'].get(d)
+            profit_arr.append(entry['profit'] if entry else None)
+            debt_arr.append(entry['debt'] if entry else None)
+        ladders_out.append({
+            'id': lid,
+            'name': ldata['name'],
+            'profit': profit_arr,
+            'debt': debt_arr,
+        })
+
+    return Response({'dates': all_dates, 'ladders': ladders_out})
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def getHistoricalChart(request, symbol):
     from datetime import datetime, timedelta
 

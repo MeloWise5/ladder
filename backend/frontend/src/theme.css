@@ -33,7 +33,7 @@
   --border-subtle:  #21262d;
 
   /* Sidebar */
-  --sidebar-width:  230px;
+  --sidebar-width:  330px;
 
   /* Radii */
   --radius-sm:      4px;
@@ -168,36 +168,30 @@ html, body, #root {
   min-width: var(--sidebar-width);
   background: var(--bg-sidebar);
   border-right: 1px solid var(--border);
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   padding: 0 var(--gap-sm);
-  /* stick just below the fixed navbar; 100vh fill so dark bg always covers viewport */
-  position: sticky;
-  top: 10px;
-  height: calc(100vh - 59px);
-  align-self: flex-start;
+  /* Fixed below the navbar so it stays visible while main content scrolls */
+  position: fixed;
+  top: 54px;
+  left: 0;
+  bottom: 0;
+  z-index: 100;
 }
 
-.dash-sidebar::-webkit-scrollbar {
-  width: 4px;
-}
-.dash-sidebar::-webkit-scrollbar-thumb {
-  background: var(--border);
-  border-radius: 4px;
-}
+.dash-sidebar::-webkit-scrollbar { display: none; }
 
 .dash-sidebar-label {
   display: flex;
   align-items: center;
   justify-content: space-between;
-  font-size: 0.65rem;
+  font-size: 0.775rem;
   font-weight: 700;
   letter-spacing: 2px;
   text-transform: uppercase;
   color: var(--text-dim);
-  padding: 0 10px 4px;
+  padding: 12px 10px 4px;
 }
 
 .sidebar-add-btn {
@@ -225,6 +219,17 @@ html, body, #root {
 
 .dash-sidebar-list {
   margin-top: 5px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  flex: 1;
+}
+
+.dash-sidebar-list::-webkit-scrollbar {
+  width: 4px;
+}
+.dash-sidebar-list::-webkit-scrollbar-thumb {
+  background: var(--border);
+  border-radius: 4px;
 }
 
 /* ---- Ladder Card in Sidebar ---- */
@@ -241,7 +246,7 @@ html, body, #root {
   border-right: 1px solid var(--border);
   background: var(--bg-card);
   transition: border-color 0.15s, background 0.15s, transform 0.1s;
-  height: 72px;
+  height: 82px;
   position: relative;
 }
 
@@ -287,8 +292,7 @@ html, body, #root {
    ============================================================ */
 .ladder-card {
   display: flex;
-  flex-direction: row;
-  align-items: center;
+  flex-direction: column;
   border-radius: 0;
   overflow: hidden;
   margin-bottom: 0;
@@ -298,11 +302,54 @@ html, body, #root {
   border-top: none;
   background: var(--bg-card);
   cursor: pointer;
-  padding: 8px 12px;
-  gap: 10px;
-  height: 64px;
+  padding: 8px 12px 6px;
+  gap: 0;
   transition: background 0.15s;
 }
+
+/* Top row: symbol | budget bar | price */
+.lc-top-row {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+}
+
+/* Bottom strip: daily profit + debt */
+.lc-daily-strip {
+  display: flex;
+  flex-direction: row;
+  align-items: center;
+  gap: 10px;
+  margin-top: 5px;
+  padding-top: 4px;
+  padding-bottom: 25px;
+  border-top: 1px solid rgba(255,255,255,0.05);
+}
+
+.lc-daily {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  font-size: 0.725rem;
+  font-weight: 600;
+  letter-spacing: 0.02em;
+}
+
+.lc-daily--profit { color: var(--color-green); }
+.lc-daily--debt   { color: var(--color-red); }
+.lc-daily--zero   { color: var(--text-dim); opacity: 0.45; }
+
+.lc-daily-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.lc-daily-dot--profit { background: var(--color-green); }
+.lc-daily-dot--debt   { background: var(--color-red); }
+.lc-daily-dot--zero   { background: var(--text-dim); }
 
 .ladder-card:hover {
   background: var(--bg-card-hover);
@@ -332,7 +379,7 @@ html, body, #root {
 }
 
 .lc-symbol {
-  font-size: 0.85rem;
+  font-size: 0.975rem;
   font-weight: 800;
   color: var(--text-primary);
   line-height: 1.1;
@@ -344,7 +391,7 @@ html, body, #root {
 }
 
 .lc-name {
-  font-size: 0.62rem;
+  font-size: 0.745rem;
   color: var(--text-dim);
   white-space: nowrap;
   overflow: hidden;
@@ -379,7 +426,7 @@ html, body, #root {
 .lc-budget-meta {
   display: flex;
   justify-content: space-between;
-  font-size: 0.58rem;
+  font-size: 0.705rem;
   color: var(--text-dim);
 }
 
@@ -393,14 +440,14 @@ html, body, #root {
 }
 
 .lc-last {
-  font-size: 0.85rem;
+  font-size: 0.975rem;
   font-weight: 700;
   color: var(--text-primary);
   line-height: 1.1;
 }
 
 .lc-change {
-  font-size: 0.68rem;
+  font-size: 0.805rem;
   font-weight: 600;
   line-height: 1.2;
   margin-top: 2px;
@@ -425,6 +472,7 @@ html, body, #root {
   overflow-x: hidden;
   padding: var(--gap-md) var(--gap-lg);
   background: var(--bg-base);
+  margin-left: var(--sidebar-width);
 }
 
 .dash-main::-webkit-scrollbar {
@@ -925,6 +973,8 @@ html, body, #root {
     top: 54px;
     left: 0;
     z-index: 1040;
+    width: 75vw;
+    min-width: 75vw;
     height: calc(100vh - 54px);
     box-shadow: 4px 0 20px rgba(0,0,0,0.5);
     transform: translateX(-100%);
@@ -985,6 +1035,7 @@ html, body, #root {
     padding: var(--gap-md);
     overflow-x: hidden;
     max-width: 100vw;
+    margin-left: 0;
   }
 
   .kpi-grid {
@@ -1286,6 +1337,36 @@ html, body, #root {
   flex-wrap: wrap;
 }
 
+/* Total profit/debt quick-ref pills in chart header */
+.chart-totals-strip {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-left: auto;
+  margin-right: 8px;
+}
+.chart-total-pill {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  padding: 4px 10px;
+  border-radius: 20px;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+.chart-total-pill--profit {
+  background: rgba(0, 230, 118, 0.12);
+  color: #00e676;
+  border: 1px solid rgba(0, 230, 118, 0.3);
+}
+.chart-total-pill--debt {
+  background: rgba(255, 82, 82, 0.12);
+  color: #ff5252;
+  border: 1px solid rgba(255, 82, 82, 0.3);
+}
+
 /* Chart view toggle buttons (Stock / Profit & Debt) — pill segmented control */
 .chart-view-btns {
   display: flex;
@@ -1394,6 +1475,30 @@ html, body, #root {
 
 .stock-chart-section canvas {
   padding: 8px 12px 4px;
+}
+
+/* Stacked chart — per-ladder legend items */
+.stacked-legend-item {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  font-size: 12px;
+  color: #8b949e;
+  cursor: default;
+  padding: 3px 6px;
+  border-radius: 4px;
+  transition: color 0.2s ease;
+}
+.stacked-legend-item:hover {
+  color: #ffd700;
+  animation: legendPulseGold 1.2s ease-in-out infinite;
+}
+
+@keyframes legendPulseGold {
+  0%   { color: #8b949e; text-shadow: none; }
+  40%  { color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.7); }
+  60%  { color: #ffd700; text-shadow: 0 0 8px rgba(255,215,0,0.7); }
+  100% { color: #8b949e; text-shadow: none; }
 }
 
 /* ============================================================

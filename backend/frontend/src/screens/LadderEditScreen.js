@@ -10,6 +10,7 @@ import {
   detailsLadder,
   updateLadder,
   deleteLadder,
+  listUsersLadders,
 } from "../actions/ladderActions";
 import {
   LADDER_UPDATE_RESET,
@@ -83,11 +84,13 @@ function LadderEditScreen() {
     }
     if (successUpdate) {
       dispatch({ type: LADDER_UPDATE_RESET });
+      dispatch(listUsersLadders());
       const from = "/";
       navigate(from);
     }
     if (deleteSuccess) {
       dispatch({ type: LADDER_DELETE_RESET });
+      dispatch(listUsersLadders());
       const from = "/";
       navigate(from);
     }

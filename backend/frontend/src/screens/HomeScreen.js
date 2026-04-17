@@ -1,20 +1,10 @@
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {useDispatch, useSelector} from 'react-redux'
 import {useNavigate } from 'react-router-dom'
 import { listUsersLadders, createLadder } from '../actions/ladderActions'
 import Loader from '../components/Loader'
 import Message from '../components/Message'
 import Ladder from './Ladder'
-
-// Module-level flag to prevent duplicate fetches
-let fetchInitiated = false
-let hasCheckedAuth = false
-
-// Expose reset function for logout
-window.resetHomeScreenFlags = () => {
-  fetchInitiated = false
-  hasCheckedAuth = false
-}
 
 function HomeScreen() {
   const dispatch = useDispatch()
@@ -23,43 +13,36 @@ function HomeScreen() {
   const { loading, error, ladders } = laddersList
   const userLogin = useSelector(state => state.userLogin)
   const {userInfo} = userLogin
-  const ladderCreate = useSelector(state => state.ladderCreate)
-  const { success: createSuccess } = ladderCreate
   const [ladderId, setLadderId] = useState(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const hasFetchedRef = useRef(false)
 
   const changeLadderHandler = (newLadderId) => {
     setLadderId(newLadderId)
     setSidebarOpen(false)
   }
   
+  // Fetch once per mount so sidebar is always fresh after navigation
   useEffect(() => {
-      if(userInfo && userInfo?.name){
-        hasCheckedAuth = true
-        if (!fetchInitiated && (!ladders || ladders.length === 0) && !loading){
-          fetchInitiated = true
-          dispatch(listUsersLadders())
-        }
-      } else {
-        fetchInitiated = false
-      }
-  },[dispatch,userInfo,loading,ladders])
-  
-  // Separate effect to reload ladders when a new one is created
-  useEffect(() => {
-    if (createSuccess) {
+    if (userInfo?.name && !hasFetchedRef.current) {
+      hasFetchedRef.current = true
       dispatch(listUsersLadders())
     }
-  }, [createSuccess, dispatch])
+  }, [dispatch, userInfo])
   
-  // Set initial ladder when ladders first load
+  // Set initial ladder when ladders first load; also select newest when list grows
   useEffect(() => {
-    if (ladders && ladders.length > 0 && !isInitialized) {
-      setLadderId(ladders[0]._id)
-      setIsInitialized(true)
+    if (ladders && ladders.length > 0) {
+      if (!isInitialized) {
+        setLadderId(ladders[0]._id)
+        setIsInitialized(true)
+      } else if (!ladders.find(l => l._id === ladderId)) {
+        // Previously selected ladder is gone (deleted), fall back to first
+        setLadderId(ladders[0]._id)
+      }
     }
-  }, [ladders, isInitialized])
+  }, [ladders, isInitialized, ladderId])
   
   // Show message if not logged in (after all hooks)
   if (!userInfo || !userInfo?.name) {
@@ -100,34 +83,53 @@ function HomeScreen() {
 
       const changeClass = isPos ? ' change-pos' : ' change-neg'
 
+      const dailyProfit = Number(ladder.daily_profit || 0)
+      const dailyDebt   = Number(ladder.daily_debt   || 0)
+      const fmtDaily = (v) => `$${Math.abs(v).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`
+
       return (
         <div
           key={ladder._id}
           className={`ladder-card${isSelected ? ' selected' : ''}${isSampleName ? ' sample-card' : ''}${isDisabled ? ' disabled-card' : ''}${changeClass}`}
           onClick={() => changeLadderHandler(ladder._id)}
         >
-          {/* Left: symbol + name */}
-          <div className="lc-left">
-            <div className="lc-symbol">{ladder.symbol}</div>
-            <div className="lc-name">{ladder.name}</div>
+          {/* Top row: symbol+name | budget bar | price+change */}
+          <div className="lc-top-row">
+            {/* Left: symbol + name */}
+            <div className="lc-left">
+              <div className="lc-symbol">{ladder.symbol}</div>
+              <div className="lc-name">{ladder.name}</div>
+            </div>
+
+            {/* Middle: budget usage bar */}
+            <div className="lc-budget">
+              <div className="lc-budget-track">
+                <div className="lc-budget-fill" style={{ width: `${debtPct * 100}%`, backgroundColor: debtColor }} />
+              </div>
+              <div className="lc-budget-meta">
+                <span>{budgetUsed}</span>
+              </div>
+            </div>
+
+            {/* Right: price + 24h change */}
+            <div className="lc-right">
+              <div className="lc-last">${Number(ladder.last).toFixed(2)}</div>
+              <div className={`lc-change ${isPos ? 'pos' : 'neg'}`}>
+                {isPos ? '▲' : '▼'} {isPos ? '+' : ''}{Number(ladder.percent_change_24h).toFixed(2)}%
+              </div>
+            </div>
           </div>
 
-          {/* Middle: budget usage bar */}
-          <div className="lc-budget">
-            <div className="lc-budget-track">
-              <div className="lc-budget-fill" style={{ width: `${debtPct * 100}%`, backgroundColor: debtColor }} />
-            </div>
-            <div className="lc-budget-meta">
-              <span>{budgetUsed}</span>
-            </div>
-          </div>
-
-          {/* Right: price + 24h change */}
-          <div className="lc-right">
-            <div className="lc-last">${Number(ladder.last).toFixed(2)}</div>
-            <div className={`lc-change ${isPos ? 'pos' : 'neg'}`}>
-              {isPos ? '▲' : '▼'} {isPos ? '+' : ''}{Number(ladder.percent_change_24h).toFixed(2)}%
-            </div>
+          {/* Bottom strip: daily profit + daily debt */}
+          <div className="lc-daily-strip">
+            <span className={`lc-daily lc-daily--profit${dailyProfit === 0 ? ' lc-daily--zero' : ''}`}>
+              <span className={`lc-daily-dot lc-daily-dot--profit${dailyProfit === 0 ? ' lc-daily-dot--zero' : ''}`} />
+              {fmtDaily(dailyProfit)}
+            </span>
+            <span className={`lc-daily lc-daily--debt${dailyDebt === 0 ? ' lc-daily--zero' : ''}`}>
+              <span className={`lc-daily-dot lc-daily-dot--debt${dailyDebt === 0 ? ' lc-daily-dot--zero' : ''}`} />
+              {fmtDaily(dailyDebt)}
+            </span>
           </div>
         </div>
       )

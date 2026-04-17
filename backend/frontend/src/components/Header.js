@@ -4,7 +4,7 @@ import { useDispatch, useSelector } from 'react-redux';
 import {LinkContainer} from 'react-router-bootstrap'
 import {Container, Nav, Navbar, NavDropdown} from 'react-bootstrap';
 import { logout } from '../actions/userActions';
-import { createLadder } from '../actions/ladderActions';
+import { createLadder, listUsersLadders } from '../actions/ladderActions';
 import { LADDER_CREATE_RESET } from '../constants/ladderConstants';
 import { useEffect } from 'react';
 import AdminIcon from './icons/AdminIcon';
@@ -20,6 +20,7 @@ function Header() {
   const { success: createSuccess, ladder: createdLadder } = ladderCreate;
   useEffect(() => {
     if(createSuccess && createdLadder?._id){
+      dispatch(listUsersLadders())
       dispatch({type: LADDER_CREATE_RESET})
       navigate(`/ladder/${createdLadder._id}/edit`);
     }

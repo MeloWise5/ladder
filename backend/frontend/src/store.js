@@ -18,7 +18,7 @@ import {
 } from './reducers/tradeReducers'
 
 import { 
-    snapshotLadderProfitReducer, historicalDataReducer
+    snapshotLadderProfitReducer, snapshotBreakdownReducer, historicalDataReducer
 } from './reducers/chartReducers'
 
 const reducer = combineReducers({
@@ -36,6 +36,7 @@ const reducer = combineReducers({
     tradeSuggestion: tradeSuggestionReducer,
 
     snapshotLadderProfitChart: snapshotLadderProfitReducer,
+    snapshotBreakdownChart: snapshotBreakdownReducer,
     historicalDataChart: historicalDataReducer,
     
     userLogin: userLoginReducer,

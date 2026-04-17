@@ -369,10 +369,26 @@ class ProfileSerializer(serializers.ModelSerializer):
 class LadderListSerializer(serializers.ModelSerializer):
     closed_daily_transaction_count = serializers.SerializerMethodField(read_only=True)
     open_daily_transaction_count = serializers.SerializerMethodField(read_only=True)
+    daily_profit = serializers.SerializerMethodField(read_only=True)
+    daily_debt = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = Ladders
-        fields = ['_id', 'name', 'symbol', 'enable', 'alert', 'profit', 'budget', 'debt', 'last','trending','percent_change_24h', 'closed_daily_transaction_count', 'open_daily_transaction_count']
+        fields = ['_id', 'name', 'symbol', 'enable', 'alert', 'profit', 'budget', 'debt', 'last','trending','percent_change_24h', 'daily_profit', 'daily_debt', 'closed_daily_transaction_count', 'open_daily_transaction_count']
+
+    def get_daily_profit(self, obj):
+        """Get daily_profit from the ladder's most recent snapshot"""
+        snapshot = obj.snapshot_set.order_by('-_id').first()
+        if snapshot:
+            return float(snapshot.daily_profit or 0)
+        return 0
+
+    def get_daily_debt(self, obj):
+        """Get daily_debt from the ladder's most recent snapshot"""
+        snapshot = obj.snapshot_set.order_by('-_id').first()
+        if snapshot:
+            return float(snapshot.daily_debt or 0)
+        return 0
 
     def _get_eastern_today_date(self):
         """Get today's date in Eastern timezone"""
