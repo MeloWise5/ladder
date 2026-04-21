@@ -137,6 +137,31 @@ class Snapshot(models.Model):
     def __str__(self):
         return f'Snapshot - {str(self.date)} - {str(self.ladder)}'
 
+
+class MonthlyLadderSnapshot(models.Model):
+    """
+    Stores aggregated monthly stats per ladder.
+    One row per ladder per calendar month.
+    is_closed=True once the month has ended and all buys from that month are sold.
+    """
+    _id = models.AutoField(primary_key=True, editable=False)
+    ladder = models.ForeignKey(Ladders, on_delete=models.CASCADE, related_name='monthly_snapshots')
+    year = models.PositiveSmallIntegerField()
+    month = models.PositiveSmallIntegerField()          # 1–12
+    profit = models.DecimalField(default=0, max_digits=12, decimal_places=2)
+    debt = models.DecimalField(default=0, max_digits=12, decimal_places=2)
+    buy_count = models.PositiveIntegerField(default=0)
+    sell_count = models.PositiveIntegerField(default=0)
+    is_closed = models.BooleanField(default=False)      # True = frozen, skip live recalc
+    committed_at = models.DateTimeField(auto_now=True)
+
+    class Meta:
+        unique_together = ('ladder', 'year', 'month')
+        ordering = ['-year', '-month']
+
+    def __str__(self):
+        return f'{self.ladder} — {self.year}/{self.month:02d} ({"closed" if self.is_closed else "open"})'
+
 class Historical(models.Model):
     symbol_name = models.TextField(null=True, blank=True)
     symbol = models.TextField(null=True, blank=True)

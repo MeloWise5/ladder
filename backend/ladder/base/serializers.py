@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db.models import F, Avg, Sum, Count, Q
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Ladders, Steps, Transactions, APICredentials, Snapshot, Historical, Profile
+from .models import Ladders, Steps, Transactions, APICredentials, Snapshot, Historical, Profile, MonthlyLadderSnapshot
 from datetime import datetime, timedelta, date
 import pytz
 # Helper function to parse timestamps
@@ -116,6 +116,15 @@ class UserSerializer(serializers.ModelSerializer):
     avg_profit_per_day = serializers.SerializerMethodField(read_only=True)
     top_5_days_by_profit = serializers.SerializerMethodField(read_only=True)
     top_5_steps_by_profit = serializers.SerializerMethodField(read_only=True)
+    daily_profit = serializers.SerializerMethodField(read_only=True)
+    daily_debt = serializers.SerializerMethodField(read_only=True)
+    daily_buy_count = serializers.SerializerMethodField(read_only=True)
+    daily_sell_count = serializers.SerializerMethodField(read_only=True)
+    monthly_profit = serializers.SerializerMethodField(read_only=True)
+    monthly_debt = serializers.SerializerMethodField(read_only=True)
+    monthly_buy_count = serializers.SerializerMethodField(read_only=True)
+    monthly_sell_count = serializers.SerializerMethodField(read_only=True)
+    monthly_breakdown = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = User
@@ -124,7 +133,10 @@ class UserSerializer(serializers.ModelSerializer):
                   'avg_transaction_profit', 'closed_transaction_count',
                   'open_transaction_count', 'avg_buy_days', 'avg_sell_days',
                   'avg_trades_per_day', 'avg_profit_per_day',
-                  'top_5_days_by_profit', 'top_5_steps_by_profit']
+                  'top_5_days_by_profit', 'top_5_steps_by_profit',
+                  'daily_profit', 'daily_debt', 'daily_buy_count', 'daily_sell_count',
+                  'monthly_profit', 'monthly_debt', 'monthly_buy_count', 'monthly_sell_count',
+                  'monthly_breakdown']
     # this is a way to make custom fields in serializer
     # the other way would be in teh databse. but this is easier
     def get__id(self, obj):
@@ -289,7 +301,7 @@ class UserSerializer(serializers.ModelSerializer):
             if trans.sell_date and trans.sell_date != '0' and trans.profit:
                 sell_date = parse_timestamp(trans.sell_date)
                 if sell_date:
-                    date_key = sell_date.strftime('%Y-%m-%d')
+                    date_key = sell_date.strftime("%m/%d/%y")
                     daily_profit[date_key] += float(trans.profit)
         
         # Sort by profit descending and take top 5
@@ -329,6 +341,145 @@ class UserSerializer(serializers.ModelSerializer):
             'profit': round(profit, 2)
         } for step_id, profit in top_5]
     
+    def get_daily_profit(self, obj):
+        """Sum daily_profit from the most recent snapshot of each user ladder"""
+        ladders = obj.ladders_set.all()
+        total = 0.0
+        for ladder in ladders:
+            snapshot = ladder.snapshot_set.order_by('-_id').first()
+            if snapshot:
+                total += float(snapshot.daily_profit or 0)
+        return round(total, 2)
+
+    def get_daily_debt(self, obj):
+        """Sum daily_debt from the most recent snapshot of each user ladder"""
+        ladders = obj.ladders_set.all()
+        total = 0.0
+        for ladder in ladders:
+            snapshot = ladder.snapshot_set.order_by('-_id').first()
+            if snapshot:
+                total += float(snapshot.daily_debt or 0)
+        return round(total, 2)
+
+    def get_daily_buy_count(self, obj):
+        """Count buy orders placed today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        ladders = obj.ladders_set.all()
+        transactions = Transactions.objects.filter(ladder__in=ladders)
+        count = 0
+        for trans in transactions:
+            dt = parse_timestamp(trans.buy_placed)
+            if dt and dt.astimezone(eastern).date() == today:
+                count += 1
+        return count
+
+    def get_daily_sell_count(self, obj):
+        """Count closed (sell) trades today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        ladders = obj.ladders_set.all()
+        transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
+        count = 0
+        for trans in transactions:
+            dt = parse_timestamp(trans.sell_date)
+            if dt and dt.astimezone(eastern).date() == today:
+                count += 1
+        return count
+
+    def get_monthly_profit(self, obj):
+        """Sum profit from closed transactions in the current month (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        ladders = obj.ladders_set.all()
+        closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
+        total = 0.0
+        for trans in closed_transactions:
+            if trans.profit:
+                dt = parse_timestamp(trans.sell_date)
+                if dt:
+                    et = dt.astimezone(eastern)
+                    if et.month == now.month and et.year == now.year:
+                        total += float(trans.profit)
+        return round(total, 2)
+
+    def get_monthly_debt(self, obj):
+        """Sum buy_total of open transactions placed this month (Eastern time) — capital deployed this month still open"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        ladders = obj.ladders_set.all()
+        open_transactions = Transactions.objects.filter(ladder__in=ladders).exclude(status='CLOSED')
+        total = 0.0
+        for trans in open_transactions:
+            if trans.buy_total:
+                dt = parse_timestamp(trans.buy_placed)
+                if dt:
+                    et = dt.astimezone(eastern)
+                    if et.month == now.month and et.year == now.year:
+                        total += float(trans.buy_total)
+        return round(total, 2)
+
+    def get_monthly_buy_count(self, obj):
+        """Count buy orders placed in the current month (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        ladders = obj.ladders_set.all()
+        transactions = Transactions.objects.filter(ladder__in=ladders)
+        count = 0
+        for trans in transactions:
+            dt = parse_timestamp(trans.buy_placed)
+            if dt:
+                et = dt.astimezone(eastern)
+                if et.month == now.month and et.year == now.year:
+                    count += 1
+        return count
+
+    def get_monthly_sell_count(self, obj):
+        """Count closed trades in the current month (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        ladders = obj.ladders_set.all()
+        closed_transactions = Transactions.objects.filter(ladder__in=ladders, status='CLOSED')
+        count = 0
+        for trans in closed_transactions:
+            dt = parse_timestamp(trans.sell_date)
+            if dt:
+                et = dt.astimezone(eastern)
+                if et.month == now.month and et.year == now.year:
+                    count += 1
+        return count
+
+    def get_monthly_breakdown(self, obj):
+        """
+        Read monthly stats directly from MonthlyLadderSnapshot.
+        The post_save signal on Transactions keeps all rows current,
+        including the current open month — no live calculation needed.
+        """
+        MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+        from collections import defaultdict
+
+        ladders = obj.ladders_set.all()
+        monthly_data = defaultdict(lambda: {'profit': 0.0, 'debt': 0.0, 'buy_count': 0, 'sell_count': 0})
+
+        for row in MonthlyLadderSnapshot.objects.filter(ladder__in=ladders):
+            key = (row.year, row.month)
+            monthly_data[key]['profit']     += float(row.profit)
+            monthly_data[key]['debt']       += float(row.debt)
+            monthly_data[key]['buy_count']  += row.buy_count
+            monthly_data[key]['sell_count'] += row.sell_count
+
+        return [
+            {
+                'month': MONTH_NAMES[month - 1],
+                'year': year,
+                'profit': round(data['profit'], 2),
+                'debt': round(data['debt'], 2),
+                'buy_count': data['buy_count'],
+                'sell_count': data['sell_count'],
+            }
+            for (year, month), data in sorted(monthly_data.items(), reverse=True)
+        ]
+
     def to_representation(self, instance):
         """Calculate and update profit field before serializing"""
         # Calculate total closed profit across all user's ladders
@@ -482,6 +633,15 @@ class LadderSerializer(serializers.ModelSerializer):
     avg_profit_per_day = serializers.SerializerMethodField(read_only=True)
     top_5_days_by_profit = serializers.SerializerMethodField(read_only=True)
     top_5_steps_by_profit = serializers.SerializerMethodField(read_only=True)
+    monthly_breakdown = serializers.SerializerMethodField(read_only=True)
+    daily_profit = serializers.SerializerMethodField(read_only=True)
+    daily_debt = serializers.SerializerMethodField(read_only=True)
+    daily_buy_count = serializers.SerializerMethodField(read_only=True)
+    daily_sell_count = serializers.SerializerMethodField(read_only=True)
+    monthly_profit = serializers.SerializerMethodField(read_only=True)
+    monthly_debt = serializers.SerializerMethodField(read_only=True)
+    monthly_buy_count = serializers.SerializerMethodField(read_only=True)
+    monthly_sell_count = serializers.SerializerMethodField(read_only=True)
 
     
     class Meta:
@@ -607,7 +767,7 @@ class LadderSerializer(serializers.ModelSerializer):
             if profit:
                 sell_date = parse_timestamp(sell_date_raw)
                 if sell_date:
-                    daily_profit[sell_date.strftime('%Y-%m-%d')] += float(profit)
+                    daily_profit[sell_date.strftime("%m/%d/%y")] += float(profit)
         top_5 = sorted(daily_profit.items(), key=lambda x: x[1], reverse=True)[:5]
         return [{'date': date, 'profit': round(profit, 2)} for date, profit in top_5]
 
@@ -626,7 +786,82 @@ class LadderSerializer(serializers.ModelSerializer):
             'price': float(r['step__price']) if r['step__price'] else 0,
             'profit': round(float(r['total_profit']), 2)
         } for r in results]
-    
+
+    def get_monthly_breakdown(self, obj):
+        """Read monthly stats for this ladder from MonthlyLadderSnapshot, newest first."""
+        MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
+        return [
+            {
+                'month': MONTH_NAMES[row.month - 1],
+                'year': row.year,
+                'profit': float(row.profit),
+                'debt': float(row.debt),
+                'buy_count': row.buy_count,
+                'sell_count': row.sell_count,
+            }
+            for row in MonthlyLadderSnapshot.objects.filter(ladder=obj).order_by('-year', '-month')
+        ]
+
+    def get_daily_profit(self, obj):
+        """Get daily_profit from this ladder's most recent snapshot"""
+        snapshot = obj.snapshot_set.order_by('-_id').first()
+        return round(float(snapshot.daily_profit or 0), 2) if snapshot else 0.0
+
+    def get_daily_debt(self, obj):
+        """Get daily_debt from this ladder's most recent snapshot"""
+        snapshot = obj.snapshot_set.order_by('-_id').first()
+        return round(float(snapshot.daily_debt or 0), 2) if snapshot else 0.0
+
+    def get_daily_buy_count(self, obj):
+        """Count buy orders placed today (Eastern time) for this ladder"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        count = 0
+        for trans in obj.transactions_set.all():
+            dt = parse_timestamp(trans.buy_placed)
+            if dt and dt.astimezone(eastern).date() == today:
+                count += 1
+        return count
+
+    def get_daily_sell_count(self, obj):
+        """Count closed trades today (Eastern time) for this ladder"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        count = 0
+        for trans in obj.transactions_set.filter(status='CLOSED'):
+            dt = parse_timestamp(trans.sell_date)
+            if dt and dt.astimezone(eastern).date() == today:
+                count += 1
+        return count
+
+    def get_monthly_profit(self, obj):
+        """Get this month's profit from MonthlyLadderSnapshot"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        row = MonthlyLadderSnapshot.objects.filter(ladder=obj, year=now.year, month=now.month).first()
+        return round(float(row.profit), 2) if row else 0.0
+
+    def get_monthly_debt(self, obj):
+        """Get this month's debt from MonthlyLadderSnapshot"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        row = MonthlyLadderSnapshot.objects.filter(ladder=obj, year=now.year, month=now.month).first()
+        return round(float(row.debt), 2) if row else 0.0
+
+    def get_monthly_buy_count(self, obj):
+        """Get this month's buy count from MonthlyLadderSnapshot"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        row = MonthlyLadderSnapshot.objects.filter(ladder=obj, year=now.year, month=now.month).first()
+        return row.buy_count if row else 0
+
+    def get_monthly_sell_count(self, obj):
+        """Get this month's sell count from MonthlyLadderSnapshot"""
+        eastern = pytz.timezone('America/New_York')
+        now = datetime.now(eastern)
+        row = MonthlyLadderSnapshot.objects.filter(ladder=obj, year=now.year, month=now.month).first()
+        return row.sell_count if row else 0
+
     def to_representation(self, instance):
         """Calculate and update profit field before serializing"""
         # Calculate total closed profit

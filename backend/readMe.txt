@@ -377,6 +377,7 @@ git push
 
 #####################################################  UPDATE WITH NEW CODE. 
 # how to update with new code. 
+
 ###### git hub deploy
 conda activate ladder
 cd /home/melowisev/site/ladder
@@ -386,6 +387,8 @@ sudo killall gunicorn
 cd backend/ladder
 nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
 conda activate ladder
+# make migration if you updated the database
+# python manage.py migrate
 python manage.py collectstatic --noinput
 
 NOTE::::
