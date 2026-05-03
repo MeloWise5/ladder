@@ -27,6 +27,8 @@ function hexToRgba(hex, alpha) {
 
 const MONTH_ABBR = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
 
+const LEGEND_COLS = 4
+
 export default function LineGraphBreakdown({ DATE_METHOD, MODE = 'profit' }) {
     const dispatch = useDispatch()
     const mode = MODE
@@ -34,10 +36,82 @@ export default function LineGraphBreakdown({ DATE_METHOD, MODE = 'profit' }) {
     const { breakdown, loading, error } = snapshotBreakdown
     const chartRef = useRef(null)
     const [allHidden, setAllHidden] = useState(false)
+    const [hiddenIndices, setHiddenIndices] = useState(new Set())
+
+    const externalTooltip = (context) => {
+        const { chart, tooltip } = context
+        const parent = chart.canvas.parentNode
+        if (!parent) return
+        parent.style.position = 'relative'
+
+        let el = parent.querySelector('[data-breakdown-tooltip]')
+        if (!el) {
+            el = document.createElement('div')
+            el.setAttribute('data-breakdown-tooltip', '1')
+            el.style.cssText = [
+                'position:absolute',
+                'background:rgba(22,27,34,0.96)',
+                'border:1px solid rgba(139,148,158,0.3)',
+                'border-radius:6px',
+                'padding:8px 10px',
+                'pointer-events:none',
+                'font-size:0.72rem',
+                'color:#c9d1d9',
+                'min-width:210px',
+                'z-index:100',
+                'transition:opacity 0.1s',
+            ].join(';')
+            parent.appendChild(el)
+        }
+
+        if (tooltip.opacity === 0) { el.style.opacity = '0'; return }
+
+        const title = tooltip.title?.[0] || ''
+        const items = (tooltip.dataPoints || []).filter(p => (p.parsed.y ?? 0) !== 0)
+        items.sort((a, b) => b.parsed.y - a.parsed.y)
+
+        let html = `<div style="margin-bottom:5px;color:#8b949e;font-weight:bold;border-bottom:1px solid rgba(139,148,158,0.2);padding-bottom:4px">${title}</div>`
+        for (const item of items) {
+            const raw = item.dataset.label || ''
+            const name = raw.length > 15 ? raw.slice(0, 15) + '\u2026' : raw
+            const price = `$${(item.parsed.y ?? 0).toFixed(2)}`
+            const color = item.dataset.borderColor || '#8b949e'
+            html += `<div style="display:flex;justify-content:space-between;align-items:center;gap:12px;padding:2px 0">` +
+                `<div style="display:flex;align-items:center;gap:5px;min-width:0">` +
+                `<span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${color};flex-shrink:0"></span>` +
+                `<span style="white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${name}</span>` +
+                `</div>` +
+                `<span style="white-space:nowrap;text-align:right;font-variant-numeric:tabular-nums">${price}</span>` +
+                `</div>`
+        }
+        el.innerHTML = html
+
+        const cx = tooltip.caretX
+        const cy = tooltip.caretY
+        const w = el.offsetWidth || 220
+        const canvasW = chart.canvas.offsetWidth
+        el.style.opacity = '1'
+        el.style.left = ((cx + w + 10 > canvasW ? cx - w - 10 : cx + 10)) + 'px'
+        el.style.top  = (cy - 10) + 'px'
+    }
 
     useEffect(() => {
         dispatch(snapshotBreakdownChartAction(DATE_METHOD || 'all'))
     }, [dispatch, DATE_METHOD])
+
+    // Auto-hide datasets that are entirely $0 / null whenever data or mode changes
+    useEffect(() => {
+        const chart = chartRef.current
+        if (!chart || !breakdown?.ladders) return
+        const newHidden = new Set()
+        breakdown.ladders.forEach((ladder, i) => {
+            const allZero = (ladder[mode] || []).every(v => !v || Number(v) === 0)
+            allZero ? chart.hide(i) : chart.show(i)
+            if (allZero) newHidden.add(i)
+        })
+        setHiddenIndices(newHidden)
+        setAllHidden(false)
+    }, [breakdown, mode])
 
     const xBoundaryMap = Object.create(null)
     const dates = breakdown?.dates || []
@@ -58,6 +132,37 @@ export default function LineGraphBreakdown({ DATE_METHOD, MODE = 'profit' }) {
         }
     })
 
+    // Build sorted legend items (highest last-value first)
+    const legendItems = datasets
+        .map((ds, i) => {
+            const vals = ds.data || []
+            let lastVal = -Infinity
+            for (let j = vals.length - 1; j >= 0; j--) {
+                if (vals[j] != null) { lastVal = vals[j]; break }
+            }
+            return { label: ds.label, color: ds.borderColor, idx: i, lastVal }
+        })
+        .sort((a, b) => b.lastVal - a.lastVal)
+
+    // Split into LEGEND_COLS columns (fill top-to-bottom per column)
+    const colSize = Math.ceil(legendItems.length / LEGEND_COLS)
+    const columns = Array.from({ length: LEGEND_COLS }, (_, c) =>
+        legendItems.slice(c * colSize, (c + 1) * colSize)
+    ).filter(col => col.length > 0)
+
+    const toggleDataset = (idx) => {
+        const chart = chartRef.current
+        if (!chart) return
+        if (chart.isDatasetVisible(idx)) {
+            chart.hide(idx)
+            setHiddenIndices(prev => new Set([...prev, idx]))
+        } else {
+            chart.show(idx)
+            setAllHidden(false)
+            setHiddenIndices(prev => { const n = new Set(prev); n.delete(idx); return n })
+        }
+    }
+
     const handleClearAll = () => {
         const chart = chartRef.current
         if (!chart) return
@@ -66,6 +171,7 @@ export default function LineGraphBreakdown({ DATE_METHOD, MODE = 'profit' }) {
             hide ? chart.hide(i) : chart.show(i)
         })
         setAllHidden(hide)
+        setHiddenIndices(hide ? new Set(datasets.map((_, i) => i)) : new Set())
     }
 
     const isEmpty = !breakdown || !breakdown.dates || breakdown.dates.length === 0
@@ -76,15 +182,70 @@ export default function LineGraphBreakdown({ DATE_METHOD, MODE = 'profit' }) {
                 <Message variant='info'>No breakdown data available</Message>
             ) : (
                 <div>
-                    <div style={{ display: 'flex', justifyContent: 'flex-end', padding: '4px 8px 0' }}>
-                        <button
-                            className="stock-range-btn"
-                            onClick={handleClearAll}
-                            style={{ fontSize: '0.72rem' }}
-                        >
-                            {allHidden ? 'Show All' : 'Clear All'}
-                        </button>
+                    {/* ── Custom legend ── */}
+                    <div style={{
+                        display: 'flex',
+                        flexWrap: 'wrap',
+                        gap: '4px 12px',
+                        padding: '6px 8px 4px',
+                        alignItems: 'flex-start',
+                    }}>
+                        {columns.map((col, ci) => (
+                            <div key={ci} style={{
+                                flex: '1 1 20%',
+                                minWidth: '110px',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                gap: '3px',
+                            }}>
+                                {col.map(item => {
+                                    const hidden = hiddenIndices.has(item.idx)
+                                    return (
+                                        <div
+                                            key={item.idx}
+                                            onClick={() => toggleDataset(item.idx)}
+                                            style={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: '5px',
+                                                cursor: 'pointer',
+                                                opacity: hidden ? 0.35 : 1,
+                                                userSelect: 'none',
+                                            }}
+                                        >
+                                            <span style={{
+                                                display: 'inline-block',
+                                                width: '10px',
+                                                height: '10px',
+                                                borderRadius: '2px',
+                                                backgroundColor: item.color,
+                                                flexShrink: 0,
+                                            }} />
+                                            <span style={{
+                                                fontSize: '0.7rem',
+                                                color: hidden ? '#555' : '#8b949e',
+                                                whiteSpace: 'nowrap',
+                                                overflow: 'hidden',
+                                                textOverflow: 'ellipsis',
+                                            }}>
+                                                {item.label}
+                                            </span>
+                                        </div>
+                                    )
+                                })}
+                            </div>
+                        ))}
+                        <div style={{ display: 'flex', alignItems: 'flex-start', paddingTop: '1px' }}>
+                            <button
+                                className="stock-range-btn"
+                                onClick={handleClearAll}
+                                style={{ fontSize: '0.72rem', whiteSpace: 'nowrap' }}
+                            >
+                                {allHidden ? 'Show All' : 'Clear All'}
+                            </button>
+                        </div>
                     </div>
+
                     <div style={{ height: '525px' }}>
                         <Line
                             ref={chartRef}
@@ -144,25 +305,11 @@ export default function LineGraphBreakdown({ DATE_METHOD, MODE = 'profit' }) {
                                     text: `Per-Ladder ${mode === 'profit' ? 'Profit' : 'Debt'} Breakdown`,
                                     color: '#c9d1d9',
                                 },
-                                legend: {
-                                    labels: { color: '#8b949e' },
-                                    onClick: (e, legendItem, legend) => {
-                                        const chart = legend.chart
-                                        const idx = legendItem.datasetIndex
-                                        if (chart.isDatasetVisible(idx)) {
-                                            chart.hide(idx)
-                                        } else {
-                                            chart.show(idx)
-                                            // If user manually shows one, we're no longer "all hidden"
-                                            setAllHidden(false)
-                                        }
-                                    }
-                                },
+                                legend: { display: false },
                                 tooltip: {
-                                    callbacks: {
-                                        label: (ctx) => `${ctx.dataset.label}: $${ctx.parsed.y ?? '-'}`
+                                        enabled: false,
+                                        external: externalTooltip,
                                     }
-                                }
                             }
                         }}
                     />

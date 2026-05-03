@@ -120,7 +120,7 @@ function HomeScreen() {
             </div>
           </div>
 
-          {/* Bottom strip: daily profit + daily debt */}
+          {/* Bottom strip: daily profit + daily debt + alert icons */}
           <div className="lc-daily-strip">
             <span className={`lc-daily lc-daily--profit${dailyProfit === 0 ? ' lc-daily--zero' : ''}`}>
               <span className={`lc-daily-dot lc-daily-dot--profit${dailyProfit === 0 ? ' lc-daily-dot--zero' : ''}`} />
@@ -130,6 +130,35 @@ function HomeScreen() {
               <span className={`lc-daily-dot lc-daily-dot--debt${dailyDebt === 0 ? ' lc-daily-dot--zero' : ''}`} />
               {fmtDaily(dailyDebt)}
             </span>
+            {ladder.alert && (() => {
+              const alert = ladder.alert
+              const ALERT_ICONS = [
+                { key: 'INSUFFICIENT_FUNDS_STOCKS', level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'Insufficient funds (stocks)' },
+                { key: 'INSUFFICIENT_FUNDS_CRYPTO', level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'Insufficient funds (crypto)' },
+                { key: 'NO_FUNDS_STOCKS',           level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'No funds (stocks)' },
+                { key: 'NO_FUNDS_CRYPTO',           level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'No funds (crypto)' },
+                { key: 'BUDGET_MAXED',              level: 'warning', iconType: 'fa',   icon: 'fa-dollar-sign',      label: 'Budget maxed' },
+                { key: 'BUFFER_52_WEEK',            level: 'warning', iconType: 'text', icon: '52',                  label: '52-week high buffer' },
+                { key: 'HOUR_24',                   level: 'warning', iconType: 'fa',   icon: 'fa-arrow-trend-down', label: 'Trending down (24h)' },
+              ]
+              const active = ALERT_ICONS.filter(a => alert.includes(a.key))
+              if (!active.length) return null
+              return (
+                <span className="lc-alert-dots">
+                  {active.map(a => (
+                    <span
+                      key={a.key}
+                      className={`lc-alert-icon lc-alert-icon--${a.level}`}
+                      title={a.label}
+                    >
+                      {a.iconType === 'fa'
+                        ? <i className={`fas ${a.icon}`} />
+                        : a.icon}
+                    </span>
+                  ))}
+                </span>
+              )
+            })()}
           </div>
         </div>
       )

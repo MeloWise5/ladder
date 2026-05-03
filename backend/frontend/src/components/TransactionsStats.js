@@ -80,9 +80,72 @@ function TransactionsStats({ladder=false, selectedStepId=null, onStepIdClick=nul
     
     return (
       <div className="txn-stats-grid">
-        {/* Card 1 — Trade Averages */}
+        {/* Card 1 — Daily */}
+        <div className="txn-stats-card txn-stats-card--daily">
+          <div className="txn-stats-card-header">
+            <span className="txn-stats-title">DAILY</span>
+            <span className="txn-stats-badge">{transactions_stats.dailyDateStr}</span>
+          </div>
+          {loading ? <Loader /> : (
+            <div className="txn-stats-body">
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Total Profit</span>
+                <span className={`txn-stats-val ${transactions_stats.daily_profit >= 0 ? 'pos' : 'neg'}`}>${transactions_stats.daily_profit}</span>
+              </div>
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Total Debt</span>
+                <span className="txn-stats-val">${transactions_stats.daily_debt}</span>
+              </div>
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Buy Trades</span>
+                <span className="txn-stats-val">{transactions_stats.daily_buy_count}</span>
+              </div>
+              <div className="txn-stats-row">
+                <span className="txn-stats-label">Sell Trades</span>
+                <span className="txn-stats-val">{transactions_stats.daily_sell_count}</span>
+              </div>
+            </div>
+          )}
+        </div>
+
+        {/* Card 2 — Monthly */}
         <div className="txn-stats-card">
           <div className="txn-stats-card-header">
+            <span className="txn-stats-title">MONTHLY</span>
+          </div>
+          {loading ? <Loader /> : (
+            <div className="txn-stats-monthly-scroll">
+              {transactions_stats.monthly_breakdown?.length > 0 ? (
+                <table className="txn-stats-monthly-table">
+                  <thead>
+                    <tr>
+                      <th>Month</th>
+                      <th>Profit</th>
+                      <th>Debt</th>
+                      <th>Buys</th>
+                      <th>Sells</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {transactions_stats.monthly_breakdown.map((row, i) => (
+                      <tr key={i}>
+                        <td className="month-label">{row.month}</td>
+                        <td className={row.profit >= 0 ? 'profit-pos' : 'profit-neg'}>${Number(row.profit).toFixed(2)}</td>
+                        <td>${row.debt}</td>
+                        <td>{row.buy_count}</td>
+                        <td>{row.sell_count}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              ) : <div className="txn-stats-empty">No data</div>}
+            </div>
+          )}
+        </div>
+
+        {/* Card 3 — Trade Averages */}
+        <div className="txn-stats-card txn-stats-card--transactions">
+          <div className="txn-stats-card-header txn-stats-card-header--stacked">
             <span className="txn-stats-title">TRANSACTIONS</span>
             <span className="txn-stats-badge">
               {transactions_stats.open_transaction_count} Open &nbsp;·&nbsp; {transactions_stats.closed_transaction_count} Closed
@@ -110,7 +173,7 @@ function TransactionsStats({ladder=false, selectedStepId=null, onStepIdClick=nul
           )}
         </div>
 
-        {/* Card 2 — Top 5 */}
+        {/* Card 4 — Top 5 */}
         <div className="txn-stats-card txn-stats-card--top5">
           <div className="txn-stats-card-header">
             <span className="txn-stats-title">TOP 5</span>
@@ -148,69 +211,6 @@ function TransactionsStats({ladder=false, selectedStepId=null, onStepIdClick=nul
                   ))
                 ) : <div className="txn-stats-empty">No data</div>}
               </div>
-            </div>
-          )}
-        </div>
-
-        {/* Card 3 — Daily */}
-        <div className="txn-stats-card txn-stats-card--daily">
-          <div className="txn-stats-card-header">
-            <span className="txn-stats-title">DAILY</span>
-            <span className="txn-stats-badge">{transactions_stats.dailyDateStr}</span>
-          </div>
-          {loading ? <Loader /> : (
-            <div className="txn-stats-body">
-              <div className="txn-stats-row">
-                <span className="txn-stats-label">Total Profit</span>
-                <span className={`txn-stats-val ${transactions_stats.daily_profit >= 0 ? 'pos' : 'neg'}`}>${transactions_stats.daily_profit}</span>
-              </div>
-              <div className="txn-stats-row">
-                <span className="txn-stats-label">Total Debt</span>
-                <span className="txn-stats-val">${transactions_stats.daily_debt}</span>
-              </div>
-              <div className="txn-stats-row">
-                <span className="txn-stats-label">Buy Trades</span>
-                <span className="txn-stats-val">{transactions_stats.daily_buy_count}</span>
-              </div>
-              <div className="txn-stats-row">
-                <span className="txn-stats-label">Sell Trades</span>
-                <span className="txn-stats-val">{transactions_stats.daily_sell_count}</span>
-              </div>
-            </div>
-          )}
-        </div>
-
-        {/* Card 4 — Monthly */}
-        <div className="txn-stats-card">
-          <div className="txn-stats-card-header">
-            <span className="txn-stats-title">MONTHLY</span>
-          </div>
-          {loading ? <Loader /> : (
-            <div className="txn-stats-monthly-scroll">
-              {transactions_stats.monthly_breakdown?.length > 0 ? (
-                <table className="txn-stats-monthly-table">
-                  <thead>
-                    <tr>
-                      <th>Month</th>
-                      <th>Profit</th>
-                      <th>Debt</th>
-                      <th>Buys</th>
-                      <th>Sells</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {transactions_stats.monthly_breakdown.map((row, i) => (
-                      <tr key={i}>
-                        <td className="month-label">{row.month}</td>
-                        <td className={row.profit >= 0 ? 'profit-pos' : 'profit-neg'}>${row.profit}</td>
-                        <td>${row.debt}</td>
-                        <td>{row.buy_count}</td>
-                        <td>{row.sell_count}</td>
-                      </tr>
-                    ))}
-                  </tbody>
-                </table>
-              ) : <div className="txn-stats-empty">No data</div>}
             </div>
           )}
         </div>

@@ -1,5 +1,5 @@
 from django.contrib import admin
-from .models import Ladders, Steps, Transactions, Profile, APICredentials, Snapshot, Historical, MonthlyLadderSnapshot
+from .models import Ladders, Steps, Transactions, Profile, APICredentials, Snapshot, Historical, MonthlyLadderSnapshot, MonthlyUserSnapshot
 
 # Register your models here.
 admin.site.register(Ladders)
@@ -10,3 +10,4 @@ admin.site.register(APICredentials)
 admin.site.register(Snapshot)
 admin.site.register(Historical)
 admin.site.register(MonthlyLadderSnapshot)
+admin.site.register(MonthlyUserSnapshot)

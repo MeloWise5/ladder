@@ -2,7 +2,7 @@ from rest_framework import serializers
 from django.contrib.auth.models import User
 from django.db.models import F, Avg, Sum, Count, Q
 from rest_framework_simplejwt.tokens import RefreshToken
-from .models import Ladders, Steps, Transactions, APICredentials, Snapshot, Historical, Profile, MonthlyLadderSnapshot
+from .models import Ladders, Steps, Transactions, APICredentials, Snapshot, Historical, Profile, MonthlyLadderSnapshot, MonthlyUserSnapshot
 from datetime import datetime, timedelta, date
 import pytz
 # Helper function to parse timestamps
@@ -451,33 +451,21 @@ class UserSerializer(serializers.ModelSerializer):
 
     def get_monthly_breakdown(self, obj):
         """
-        Read monthly stats directly from MonthlyLadderSnapshot.
-        The post_save signal on Transactions keeps all rows current,
-        including the current open month — no live calculation needed.
+        Read monthly stats directly from MonthlyUserSnapshot.
+        One row per user per month — no cross-ladder aggregation needed at query time.
         """
         MONTH_NAMES = ['January','February','March','April','May','June','July','August','September','October','November','December']
-        from collections import defaultdict
-
-        ladders = obj.ladders_set.all()
-        monthly_data = defaultdict(lambda: {'profit': 0.0, 'debt': 0.0, 'buy_count': 0, 'sell_count': 0})
-
-        for row in MonthlyLadderSnapshot.objects.filter(ladder__in=ladders):
-            key = (row.year, row.month)
-            monthly_data[key]['profit']     += float(row.profit)
-            monthly_data[key]['debt']       += float(row.debt)
-            monthly_data[key]['buy_count']  += row.buy_count
-            monthly_data[key]['sell_count'] += row.sell_count
 
         return [
             {
-                'month': MONTH_NAMES[month - 1],
-                'year': year,
-                'profit': round(data['profit'], 2),
-                'debt': round(data['debt'], 2),
-                'buy_count': data['buy_count'],
-                'sell_count': data['sell_count'],
+                'month': MONTH_NAMES[row.month - 1],
+                'year': row.year,
+                'profit': float(row.profit),
+                'debt': float(row.debt),
+                'buy_count': row.buy_count,
+                'sell_count': row.sell_count,
             }
-            for (year, month), data in sorted(monthly_data.items(), reverse=True)
+            for row in MonthlyUserSnapshot.objects.filter(user=obj).order_by('-year', '-month')
         ]
 
     def to_representation(self, instance):

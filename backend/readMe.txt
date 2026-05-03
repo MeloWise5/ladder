@@ -386,7 +386,7 @@ git reset --hard origin/main
 sudo killall gunicorn
 cd backend/ladder
 nohup /home/melowisev/anaconda3/envs/ladder/bin/gunicorn ladder.wsgi:application --bind 127.0.0.1:8000 > gunicorn.log 2>&1 &
-conda activate ladder
+
 # make migration if you updated the database
 # python manage.py migrate
 python manage.py collectstatic --noinput

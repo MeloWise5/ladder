@@ -42,14 +42,60 @@ function Ladder({ladder_id}) {
   const [activeChart, setActiveChart] = useState('stock')
   const [selectedStep, setSelectedStep] = useState(null)
   const [selectedStepId, setSelectedStepId] = useState(null)
+
+  // Parse a raw timestamp string/number into a Date
+  const parseTs = (raw) => {
+    if (!raw || raw === '0') return null
+    if (typeof raw === 'number' || /^-?\d+(\.\d+)?$/.test(String(raw).trim())) {
+      const n = Number(raw)
+      return new Date(Math.abs(n) < 1e10 ? n * 1000 : n)
+    }
+    const d = new Date(raw)
+    return isNaN(d.getTime()) ? null : d
+  }
+
+  // Pick the tightest chart range that contains both dates
+  const smartDateMethod = (rawBuy, rawSell) => {
+    const buyDate = parseTs(rawBuy)
+    const sellDate = parseTs(rawSell)
+    if (!buyDate || !sellDate) return 'all'
+    const nowMs = Date.now()
+    const daysAgo = (d) => (nowMs - d.getTime()) / 86400000
+    const maxDays = Math.max(daysAgo(buyDate), daysAgo(sellDate))
+    if (maxDays <= 7)   return 'week'
+    if (maxDays <= 30)  return 'month'
+    if (maxDays <= 365) return 'year'
+    return 'all'
+  }
+
+  // Called when a top-5 step row is clicked in TransactionsStats
   const handleStepIdClick = (id) => {
     setSelectedStepId(id)
-    if (id) {
-      setStockDateMethod('all')
+    if (!id) return // just clear, don't reset date range
+    const step = ladder?.steps?.find(s => String(s._id) === String(id))
+    const txn = step?.transaction
+    if (txn?.status?.toUpperCase() === 'CLOSED' && txn?.buy_date && txn?.sell_date) {
+      setStockDateMethod(smartDateMethod(txn.buy_date, txn.sell_date))
     } else {
-      setStockDateMethod('month')
+      setStockDateMethod('all')
     }
   }
+
+  // Called by graph when a non-heatmap closed dot is selected
+  const handleDotSelected = (rawBuy, rawSell) => {
+    if (rawBuy || rawSell) setStockDateMethod(smartDateMethod(rawBuy, rawSell))
+  }
+
+  // When a heatmap step is selected on the graph, set the smart date range
+  useEffect(() => {
+    if (!selectedStep) return
+    const txn = selectedStep?.transaction
+    if (txn?.status?.toUpperCase() === 'CLOSED' && txn?.buy_date && txn?.sell_date) {
+      setStockDateMethod(smartDateMethod(txn.buy_date, txn.sell_date))
+    } else {
+      setStockDateMethod('all')
+    }
+  }, [selectedStep]) // eslint-disable-line react-hooks/exhaustive-deps
 
   // The Steps serializer returns `transaction` as the full transaction object (not just an ID).
   // The chart API returns `transaction_id: transaction._id` for each plotted buy point.
@@ -477,7 +523,7 @@ function Ladder({ladder_id}) {
         </div>
         <div className={`chart-panel${activeChart === 'stock' ? ' chart-panel--visible' : ''}`}>
           {symbol
-            ? <LineLadderStockGraph key={ladder_id} SYMBOL={symbol} DATE_METHOD={stockDateMethod} selectedStep={selectedStep} selectedTransactionId={selectedTransactionId} ladder={!loadingLadder && ladder && ladder._id === Number(ladder_id) ? ladder : null} onStepClick={setSelectedStep} selectedStepId={selectedStepId} onStepIdClick={handleStepIdClick} />
+            ? <LineLadderStockGraph key={ladder_id} SYMBOL={symbol} DATE_METHOD={stockDateMethod} selectedStep={selectedStep} selectedTransactionId={selectedTransactionId} ladder={!loadingLadder && ladder && ladder._id === Number(ladder_id) ? ladder : null} onStepClick={setSelectedStep} selectedStepId={selectedStepId} onStepIdClick={handleStepIdClick} onDotSelected={handleDotSelected} />
             : loadingLadder
               ? <div style={{padding:'40px', textAlign:'center'}}><Loader /></div>
               : <div className="chart-no-symbol">No symbol configured for this ladder.</div>

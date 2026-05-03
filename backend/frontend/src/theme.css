@@ -351,6 +351,40 @@ html, body, #root {
 .lc-daily-dot--debt   { background: var(--color-red); }
 .lc-daily-dot--zero   { background: var(--text-dim); }
 
+.lc-alert-dots {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  margin-left: auto;
+}
+
+.lc-alert-icon {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.65rem;
+  font-weight: 700;
+  line-height: 1;
+  flex-shrink: 0;
+}
+@keyframes lcAlertDanger {
+  0%, 100% {
+    transform: scale(1);
+    color: var(--color-green);
+  }
+  50% {
+    transform: scale(1.2);
+    color: var(--color-red);
+  }
+}
+
+.lc-alert-icon--danger {
+  color: var(--color-red);
+  animation: lcAlertDanger 1.4s ease-in-out infinite;
+  transform-origin: center;
+}
+.lc-alert-icon--warning { color: var(--color-yellow); }
+
 .ladder-card:hover {
   background: var(--bg-card-hover);
 }
@@ -1775,8 +1809,18 @@ html, body, #root {
   overflow: hidden;
 }
 
+.txn-stats-card--transactions {
+  flex: 0 0 auto;
+}
+
+.txn-stats-card-header--stacked {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
+}
+
 .txn-stats-card--daily {
-  flex: 0.65;
+  flex: 0 0 auto;
 }
 
 .txn-stats-card-header {
@@ -1810,6 +1854,7 @@ html, body, #root {
   display: flex;
   justify-content: space-between;
   align-items: center;
+  gap: 24px;
   padding: 6px 12px;
   border-bottom: 1px solid var(--border);
   font-size: 13px;
@@ -1950,6 +1995,24 @@ html, body, #root {
 .txn-stats-monthly-table td.profit-pos { color: var(--pos); }
 .txn-stats-monthly-table td.profit-neg { color: var(--neg); }
 .txn-stats-monthly-table tr:last-child td { border-bottom: none; }
+
+@media (min-width: 1101px) and (max-width: 1400px) {
+  .txn-stats-grid {
+    flex-wrap: wrap;
+  }
+  /* Transactions (1st) and Daily (3rd) — half-width */
+  .txn-stats-grid > *:nth-child(1),
+  .txn-stats-grid > *:nth-child(3) {
+    flex: 0 0 calc(25% - var(--gap-md) / 2) !important;
+    min-width: 0;
+  }
+  /* Top5 (2nd) and Monthly (4th) — fill remaining space */
+  .txn-stats-grid > *:nth-child(2),
+  .txn-stats-grid > *:nth-child(4) {
+    flex: 1 1 calc(75% - var(--gap-md) / 2) !important;
+    min-width: 0;
+  }
+}
 
 @media (max-width: 767px) {
   .txn-stats-grid {

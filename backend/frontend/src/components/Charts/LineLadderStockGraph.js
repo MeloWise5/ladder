@@ -70,7 +70,7 @@ function makeLadderCanvas(color, size = 20) {
     return c;
 }
 
-export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep, selectedTransactionId, ladder, onStepClick, selectedStepId, onStepIdClick }) {
+export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep, selectedTransactionId, ladder, onStepClick, selectedStepId, onStepIdClick, onDotSelected }) {
     const dispatch = useDispatch()
     const historicalDataChart = useSelector(state => state.historicalDataChart)
     const {historical, loading, error } = historicalDataChart
@@ -485,15 +485,16 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                 backgroundColor: 'rgba(214, 214, 214, 0.5)',
                 fill: '+1', // Fills area between this line and Line 2
                 pointRadius: 0, // Hide points for this line
-                pointHoverRadius: 0
+                pointHoverRadius: 0,
+                order: 1,
             },{
                 label: "Lowest",
                 data: chartData.low.map((value, index) => ({ x: index, y: value })),
                 borderColor: '#000000',
                 backgroundColor: 'rgba(206, 206, 206, 0.5)',
                 pointRadius: 0, // Hide points for this line
-                pointHoverRadius: 0
-                
+                pointHoverRadius: 0,
+                order: 1,
             },
             // ── Selected step highlight (uses displayStep so it fades rather than vanishing) ──
             ...(displayStep ? [{
@@ -507,7 +508,7 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                 pointHoverRadius: 0,
                 showLine: true,
                 fill: false,
-                order: 1,
+                order: 0,
             // Only show the highlighted dot for SELL/OPEN steps — BUY status means the
             // position is still open and not yet plotted on the chart as a completed trade.
             }, ...(displayStep.status?.toUpperCase() !== 'BUY' ? [{
@@ -541,7 +542,7 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                 pointHoverRadius: 0,
                 showLine: true,
                 fill: false,
-                order: 1,
+                order: 0,
             }] : []),
             // ── Non-heatmap dot connector (line from buy dot to sell dot) ──
             ...((() => {
@@ -560,7 +561,7 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                     pointHoverRadius: 0,
                     showLine: true,
                     fill: false,
-                    order: 1,
+                    order: 0,
                 }];
             })()),
             // ── Step-level connectors (all txns for a top-5 step click) ──
@@ -587,7 +588,7 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                         pointHoverRadius: 0,
                         showLine: true,
                         fill: false,
-                        order: 1,
+                        order: 0,
                         legend: { display: false },
                         animation: false,
                     }];
@@ -625,7 +626,15 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                 // Non-heatmap dot: clear heatmap selection, clear step selection, toggle connector line
                 if (onStepClick) onStepClick(null);
                 if (onStepIdClick) onStepIdClick(null);
-                setSelectedDotTxnId(prev => prev === txnId ? null : txnId);
+                const isSelecting = selectedDotTxnId !== txnId;
+                setSelectedDotTxnId(isSelecting ? txnId : null);
+                if (isSelecting && onDotSelected) {
+                    const bi = transactionPoints.buyFullData.findIndex(d => String(d.transaction_id) === txnId);
+                    const buyTxn = bi >= 0 ? transactionPoints.buyFullData[bi] : null;
+                    const si = transactionPoints.sellFullData.findIndex(d => String(d.transaction_id) === txnId);
+                    const sellTxn = si >= 0 ? transactionPoints.sellFullData[si] : null;
+                    onDotSelected(buyTxn?.date ?? null, sellTxn?.date ?? null);
+                }
             },
             onHover: (event, activeElements, chart) => {
                 if (activeElements.length > 0) {
