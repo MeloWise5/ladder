@@ -152,6 +152,10 @@ def updateUserProfile(request):
     if data['password'] != '':
         user.password = make_password(data['password'])
     user.save()
+    profile = user.profile
+    profile.phone_number = data.get('phone_number', profile.phone_number)
+    profile.carrier = data.get('carrier', profile.carrier)
+    profile.save()
     return Response(serializer.data)
 
 
@@ -207,6 +211,20 @@ def enableUserProfile(request,pk):
     user = User.objects.get(id=pk)
     profile = user.profile
     profile.paid = data['paid']
+    profile.save()
+    serializer = ProfileSerializer(profile, many=False)
+    return Response(serializer.data)
+
+@api_view(['PUT'])
+@permission_classes([IsAuthenticated])
+def updateProfileNotifications(request):
+    user = request.user
+    data = request.data
+    profile = user.profile
+    profile.weekly_report  = data.get('weekly_report',  profile.weekly_report)
+    profile.monthly_report = data.get('monthly_report', profile.monthly_report)
+    profile.notify_email   = data.get('notify_email',   profile.notify_email)
+    profile.notify_sms     = data.get('notify_sms',     profile.notify_sms)
     profile.save()
     serializer = ProfileSerializer(profile, many=False)
     return Response(serializer.data)

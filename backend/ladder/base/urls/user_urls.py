@@ -10,6 +10,7 @@ urlpatterns = [
 
     path('profile/',views.getUserProfile, name="user_profile"),
     path('profile/update/',views.updateUserProfile, name="user_profile_update"),
+    path('profile/notifications/',views.updateProfileNotifications, name="user_profile_notifications"),
     path('profile/paid/<str:pk>/',views.enableUserProfile, name="user_profile_enable"),
 
     path('credentials/',views.createAPICredentials, name="create_api_credentials"),

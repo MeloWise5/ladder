@@ -16,7 +16,8 @@ import {
     USER_UPDATE_RESET, USER_UPDATE_CREDENTIALS_FAIL, USER_UPDATE_CREDENTIALS_REQUEST, USER_UPDATE_CREDENTIALS_SUCCESS,
     USER_DELETE_CREDENTIALS_REQUEST, USER_DELETE_CREDENTIALS_SUCCESS, USER_DELETE_CREDENTIALS_FAIL, USER_DELETE_CREDENTIALS_RESET,
     USER_ENABLE_CREDENTIALS_FAIL, USER_ENABLE_CREDENTIALS_REQUEST, USER_ENABLE_CREDENTIALS_SUCCESS, USER_ENABLE_CREDENTIALS_RESET,
-    USER_PROFILE_PAID_UPDATE_REQUEST, USER_PROFILE_PAID_UPDATE_SUCCESS, USER_PROFILE_PAID_UPDATE_FAIL, USER_PROFILE_PAID_UPDATE_RESET
+    USER_PROFILE_PAID_UPDATE_REQUEST, USER_PROFILE_PAID_UPDATE_SUCCESS, USER_PROFILE_PAID_UPDATE_FAIL, USER_PROFILE_PAID_UPDATE_RESET,
+    USER_UPDATE_NOTIFICATIONS_REQUEST, USER_UPDATE_NOTIFICATIONS_SUCCESS, USER_UPDATE_NOTIFICATIONS_FAIL, USER_UPDATE_NOTIFICATIONS_RESET
 } from '../constants/userConstants' 
 
 import { 
@@ -469,4 +470,25 @@ export const updateUserProfilePaid = (profile_paid_data) => async (dispatch, get
                 error.response.data.detail : error.message,
         })
     }       
+}
+
+export const updateNotificationPreferences = (prefs) => async (dispatch, getState) => {
+    try {
+        dispatch({ type: USER_UPDATE_NOTIFICATIONS_REQUEST })
+        const { userLogin: { userInfo } } = getState()
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${userInfo.token}`,
+            },
+        }
+        const { data } = await axios.put(`/api/users/profile/notifications/`, prefs, config)
+        dispatch({ type: USER_UPDATE_NOTIFICATIONS_SUCCESS, payload: data })
+    } catch (error) {
+        dispatch({
+            type: USER_UPDATE_NOTIFICATIONS_FAIL,
+            payload: error.response && error.response.data.detail ?
+                error.response.data.detail : error.message,
+        })
+    }
 }

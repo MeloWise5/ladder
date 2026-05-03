@@ -14,7 +14,8 @@ import {
     USER_UPDATE_CREDENTIALS_FAIL, USER_UPDATE_CREDENTIALS_REQUEST, USER_UPDATE_CREDENTIALS_SUCCESS, USER_UPDATE_CREDENTIALS_RESET,
     USER_DELETE_CREDENTIALS_REQUEST, USER_DELETE_CREDENTIALS_SUCCESS, USER_DELETE_CREDENTIALS_FAIL, USER_DELETE_CREDENTIALS_RESET,
     USER_ENABLE_CREDENTIALS_FAIL, USER_ENABLE_CREDENTIALS_REQUEST, USER_ENABLE_CREDENTIALS_SUCCESS, USER_ENABLE_CREDENTIALS_RESET,
-    USER_PROFILE_PAID_UPDATE_REQUEST, USER_PROFILE_PAID_UPDATE_SUCCESS, USER_PROFILE_PAID_UPDATE_FAIL, USER_PROFILE_PAID_UPDATE_RESET
+    USER_PROFILE_PAID_UPDATE_REQUEST, USER_PROFILE_PAID_UPDATE_SUCCESS, USER_PROFILE_PAID_UPDATE_FAIL, USER_PROFILE_PAID_UPDATE_RESET,
+    USER_UPDATE_NOTIFICATIONS_REQUEST, USER_UPDATE_NOTIFICATIONS_SUCCESS, USER_UPDATE_NOTIFICATIONS_FAIL, USER_UPDATE_NOTIFICATIONS_RESET
 } from '../constants/userConstants' 
 
 export const userLoginReducer = (state = { }, action) => {
@@ -152,6 +153,21 @@ export const userUpdateProfilePaidReducer = (state = { }, action) => {
         case USER_PROFILE_PAID_UPDATE_FAIL:
             return { loading: false, error: action.payload }
         case USER_PROFILE_PAID_UPDATE_RESET:
+            return {}
+        default:
+            return state
+    }
+}
+
+export const userUpdateNotificationsReducer = (state = { }, action) => {
+    switch (action.type) {
+        case USER_UPDATE_NOTIFICATIONS_REQUEST:
+            return { loading: true }
+        case USER_UPDATE_NOTIFICATIONS_SUCCESS:
+            return { loading: false, success: true }
+        case USER_UPDATE_NOTIFICATIONS_FAIL:
+            return { loading: false, error: action.payload }
+        case USER_UPDATE_NOTIFICATIONS_RESET:
             return {}
         default:
             return state

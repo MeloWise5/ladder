@@ -2276,6 +2276,96 @@ html, body, #root {
   background: rgba(255, 77, 77, 0.12);
 }
 
+/* ── Notification icon toggles ── */
+.notif-icon-row {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.notif-icon-btn {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  width: 64px;
+  height: 64px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  color: var(--text-muted, #555);
+  cursor: pointer;
+  transition: border-color 0.15s, color 0.15s, background 0.15s;
+  padding: 0;
+}
+
+.notif-icon-btn i {
+  font-size: 1.3rem;
+}
+
+.notif-icon-btn.active {
+  border-color: var(--color-yellow);
+  color: var(--color-yellow);
+  background: rgba(var(--color-yellow-rgb, 230,179,0), 0.08);
+}
+
+.notif-icon-btn.disabled {
+  opacity: 0.3;
+  cursor: not-allowed;
+}
+
+.notif-icon-label {
+  font-size: 0.6rem;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  line-height: 1;
+}
+
+.notif-icon-badge {
+  position: absolute;
+  top: 6px;
+  right: 6px;
+  font-size: 0.55rem;
+  font-weight: 800;
+  line-height: 1;
+  color: inherit;
+}
+
+.notif-divider {
+  width: 1px;
+  height: 44px;
+  background: var(--border);
+  margin: 0 4px;
+  flex-shrink: 0;
+}
+
+/* Notification summary / inline feedback */
+.notif-summary {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 10px 12px;
+  background: var(--bg-surface);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+}
+
+.notif-summary-line {
+  font-size: 0.78rem;
+  color: var(--text-secondary);
+  line-height: 1.4;
+}
+
+.notif-summary-error {
+  font-size: 0.78rem;
+  color: var(--color-red);
+  line-height: 1.4;
+}
+
 @media (max-width: 768px) {
   .prof-layout {
     flex-direction: column;
