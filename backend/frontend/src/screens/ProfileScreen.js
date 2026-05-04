@@ -37,7 +37,6 @@ function ProfileScreen() {
     // Notification / phone state
     const [phoneNumber, setPhoneNumber] = useState('')
     const [phoneFocused, setPhoneFocused] = useState(false)
-    const [carrier, setCarrier] = useState('')
     const [weeklyReport, setWeeklyReport] = useState(false)
     const [monthlyReport, setMonthlyReport] = useState(false)
     const [notifyEmail, setNotifyEmail] = useState(false)
@@ -139,7 +138,6 @@ function ProfileScreen() {
         setEmail(user.email)
         if (user.profile) {
             setPhoneNumber(user.profile.phone_number || '')
-            setCarrier(user.profile.carrier || '')
             setWeeklyReport(user.profile.weekly_report || false)
             setMonthlyReport(user.profile.monthly_report || false)
             setNotifyEmail(user.profile.notify_email || false)
@@ -152,7 +150,7 @@ function ProfileScreen() {
         setMessageSuccess('')
         setMessageError('')
         setActiveForm('profile')
-        dispatch(updateUserProfileDetails({'id':user._id, 'name':name, 'email':email, 'password':'', 'phone_number':phoneNumber, 'carrier':carrier}))
+        dispatch(updateUserProfileDetails({'id':user._id, 'name':name, 'email':email, 'password':'', 'phone_number':phoneNumber}))
     }
     const submitPasswordHandler = (e) => {
         e.preventDefault()
@@ -304,20 +302,7 @@ function ProfileScreen() {
                   onChange={(e) => setPhoneNumber(e.target.value.replace(/\D/g, '').slice(0, 10))}
                 />
               </Form.Group>
-              <Form.Group controlId='carrier' className='mb-3'>
-                <Form.Label className="prof-label">Carrier {phoneNumber && <span style={{color:'red'}}>*</span>}</Form.Label>
-                <Form.Select className="dark-input" value={carrier} required={!!phoneNumber} onChange={(e) => setCarrier(e.target.value)}>
-                  <option value=''>Select Carrier</option>
-                  <option value='att'>AT&amp;T</option>
-                  <option value='verizon'>Verizon</option>
-                  <option value='tmobile'>T-Mobile</option>
-                  <option value='cricket'>Cricket</option>
-                  <option value='boost'>Boost</option>
-                  <option value='metropcs'>Metro by T-Mobile</option>
-                  <option value='uscellular'>US Cellular</option>
-                  <option value='googlefi'>Google Fi</option>
-                </Form.Select>
-              </Form.Group>
+
               <button className="prof-btn" type='submit'>Update Profile</button>
             </Form>
           </div>
@@ -459,9 +444,9 @@ function ProfileScreen() {
                 </button>
                 <button
                   type="button"
-                  className={`notif-icon-btn${notifySms ? ' active' : ''}${(!phoneNumber || !carrier) ? ' disabled' : ''}`}
-                  onClick={() => { if (phoneNumber && carrier) setNotifySms(v => !v) }}
-                  title={(!phoneNumber || !carrier) ? 'Add phone & carrier above to enable' : 'Text notifications'}
+                  className={`notif-icon-btn${notifySms ? ' active' : ''}${!phoneNumber ? ' disabled' : ''}`}
+                  onClick={() => { if (phoneNumber) setNotifySms(v => !v) }}
+                  title={!phoneNumber ? 'Add a phone number above to enable' : 'Text notifications'}
                 >
                   <i className="fa-solid fa-comment-sms" />
                   <span className="notif-icon-label">Text</span>

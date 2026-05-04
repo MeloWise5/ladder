@@ -509,7 +509,27 @@ git pull
 
 
 
+###############################################
+###### twilio
+###############################################
+api for sendign text messages
+$20 bucks pay as you go each test is like .00079 cents. 
+auto recharges when its below 10$ to make it back up to $20. 
+this can be changed. 
 
+
+
+###############################################
+###### google api 
+###############################################
+api for sending emails
+free
+
+
+
+###############################################
+
+###############################################
 # Script
 pip install pytz
 pip install rich

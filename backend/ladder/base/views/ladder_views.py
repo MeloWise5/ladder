@@ -40,9 +40,16 @@ def getUsersLadderList(request):
 
 @api_view(['GET'])
 def getLadder(request, pk):
-    ladder = Ladders.objects.get(_id=pk)
-    serializer = LadderSerializer(ladder, many=False)
-    return Response(serializer.data)
+    try:
+        ladder = Ladders.objects.get(_id=pk)
+    except Ladders.DoesNotExist:
+        return Response({'detail': f'Ladder {pk} not found'}, status=status.HTTP_404_NOT_FOUND)
+    try:
+        serializer = LadderSerializer(ladder, many=False)
+        return Response(serializer.data)
+    except Exception as e:
+        import traceback
+        return Response({'detail': str(e), 'trace': traceback.format_exc()}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 @api_view(['POST'])
 @permission_classes([IsAuthenticated])

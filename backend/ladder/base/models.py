@@ -83,23 +83,11 @@ class Steps(models.Model):
     def __str__(self):
         return f"{str(self._id)} {str(self.step_code)}"
     
-CARRIER_CHOICES = [
-    ('att',       'AT&T'),
-    ('verizon',   'Verizon'),
-    ('tmobile',   'T-Mobile'),
-    ('cricket',   'Cricket'),
-    ('boost',     'Boost'),
-    ('metropcs',  'Metro by T-Mobile'),
-    ('uscellular','US Cellular'),
-    ('googlefi',  'Google Fi'),
-]
-
 class Profile(models.Model):
     user = models.OneToOneField(User, on_delete=models.CASCADE, null=True, related_name='profile')
     paid = models.BooleanField(default=False)
     percentage = models.IntegerField(default=0)
     phone_number = models.CharField(max_length=20, null=True, blank=True)
-    carrier = models.CharField(max_length=20, choices=CARRIER_CHOICES, null=True, blank=True)
     weekly_report = models.BooleanField(default=False)
     monthly_report = models.BooleanField(default=False)
     notify_email = models.BooleanField(default=False)

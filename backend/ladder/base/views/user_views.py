@@ -154,7 +154,6 @@ def updateUserProfile(request):
     user.save()
     profile = user.profile
     profile.phone_number = data.get('phone_number', profile.phone_number)
-    profile.carrier = data.get('carrier', profile.carrier)
     profile.save()
     return Response(serializer.data)
 
