@@ -8,6 +8,7 @@ urlpatterns = [
     path('user/list/',views.getUsersLadderList, name="user ladder list"),
     path('lookupt/<str:symbol>/',views.lookupStock, name="lookup stock"),
     path('lookupc/<str:symbol>/',views.lookupCrypto, name="lookup crypto"),
+    path('quotet/<str:symbol>/',views.getStockQuote, name="stock quote"),
     path('<str:pk>/',views.getLadder, name="ladder"),
     path('create',views.createLadder, name="create ladder"),
     path('bulk-create',views.bulkCreateLadders, name="bulk create ladders"),

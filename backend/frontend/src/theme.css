@@ -2624,6 +2624,83 @@ html, body, #root {
   margin-left: 6px;
 }
 
+.stock-quote-strip {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 8px;
+  padding: 12px 16px;
+}
+
+.stock-quote-price {
+  font-size: 1.35rem;
+  font-weight: 700;
+  color: var(--text-color, #e0e0e0);
+  margin-bottom: 10px;
+}
+
+.stock-quote-change.up   { color: #7ecf7e; font-size: 0.9rem; font-weight: 500; }
+.stock-quote-change.down { color: #e07e7e; font-size: 0.9rem; font-weight: 500; }
+
+.stock-quote-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+  gap: 6px 12px;
+}
+
+.stock-quote-cell {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.stock-quote-cell span:first-child {
+  font-size: 0.68rem;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--text-dim, #888);
+}
+
+.stock-quote-cell span:last-child {
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: var(--text-color, #ddd);
+}
+
+.spt-formula-display {
+  cursor: default;
+  pointer-events: none;
+  min-height: 38px;
+  display: flex;
+  align-items: center;
+  opacity: 0.85;
+}
+
+.spt-formula-text {
+  font-size: 0.82rem;
+  color: var(--text-color, #ccc);
+  line-height: 1.6;
+}
+
+.spt-formula-val {
+  color: var(--text-color, #e0e0e0);
+  font-weight: 600;
+}
+
+.spt-formula-op {
+  color: var(--text-dim, #aaa);
+}
+
+.spt-formula-result {
+  color: #7ecf7e;
+  font-weight: 700;
+}
+
+.spt-formula-hint {
+  font-size: 0.73rem;
+  color: var(--text-dim, #999);
+  font-style: italic;
+}
+
 .ladder-edit-desc {
   font-size: 0.8rem;
   color: var(--text-dim);

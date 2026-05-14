@@ -66,6 +66,10 @@ function LadderEditScreen() {
   const [suggestions, setSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
 
+  const [pennyStockWarning, setPennyStockWarning] = useState(false);
+  const [stockPrice, setStockPrice] = useState(null);
+  const [stockQuote, setStockQuote] = useState(null);
+
   const [capVisible, setCapVisible] = useState(false);
   const [priceVisible, setPriceVisible] = useState(false);
 
@@ -220,10 +224,33 @@ function LadderEditScreen() {
     }
   };
 
-  const handleSelection = (symbol, name) => {
-    setSymbol(symbol);
+  const handleSelection = async (sym, name) => {
+    setSymbol(sym);
     setSymbolName(name);
     setShowSuggestions(false);
+    setPennyStockWarning(false);
+    setStockPrice(null);
+    setStockQuote(null);
+
+    if (market === "Stocks") {
+      try {
+        const config = {
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${userInfo.token}`,
+          },
+        };
+        const response = await axios.get(`/api/ladders/quotet/${sym}/`, config);
+        const price = response.data.price;
+        setStockPrice(price);
+        setStockQuote(response.data);
+        if (price > 0 && price < 5) {
+          setPennyStockWarning(true);
+        }
+      } catch (error) {
+        console.error("Error fetching stock quote:", error);
+      }
+    }
   };
   const handleMarketChange = (e) => {
     setMarket(e.target.value);
@@ -232,6 +259,9 @@ function LadderEditScreen() {
     setSuggestions([]);
     setShowSuggestions(false);
     setType("Percentage");
+    setPennyStockWarning(false);
+    setStockPrice(null);
+    setStockQuote(null);
   };
   const handleTypeChange = (e) => {
     setType(e.target.value);
@@ -310,6 +340,30 @@ function LadderEditScreen() {
             </Col>
           </Row>
 
+          {stockQuote && market === "Stocks" && (
+            <div className="stock-quote-strip mb-3">
+              <div className="stock-quote-price">
+                ${Number(stockQuote.price).toFixed(2)}
+                {stockQuote.change != null && (
+                  <span className={`stock-quote-change ${stockQuote.change >= 0 ? 'up' : 'down'}`}>
+                    &nbsp;{stockQuote.change >= 0 ? '+' : ''}{Number(stockQuote.change).toFixed(2)}
+                    &nbsp;({stockQuote.change_percentage >= 0 ? '+' : ''}{Number(stockQuote.change_percentage).toFixed(2)}%)
+                  </span>
+                )}
+              </div>
+              <div className="stock-quote-grid">
+                {stockQuote.open    != null && <div className="stock-quote-cell"><span>Open</span><span>${Number(stockQuote.open).toFixed(2)}</span></div>}
+                {stockQuote.high    != null && <div className="stock-quote-cell"><span>High</span><span>${Number(stockQuote.high).toFixed(2)}</span></div>}
+                {stockQuote.low     != null && <div className="stock-quote-cell"><span>Low</span><span>${Number(stockQuote.low).toFixed(2)}</span></div>}
+                {stockQuote.bid     != null && <div className="stock-quote-cell"><span>Bid</span><span>${Number(stockQuote.bid).toFixed(2)}</span></div>}
+                {stockQuote.ask     != null && <div className="stock-quote-cell"><span>Ask</span><span>${Number(stockQuote.ask).toFixed(2)}</span></div>}
+                {stockQuote.volume  != null && <div className="stock-quote-cell"><span>Volume</span><span>{Number(stockQuote.volume).toLocaleString()}</span></div>}
+                {stockQuote.week52_high != null && <div className="stock-quote-cell"><span>52W High</span><span>${Number(stockQuote.week52_high).toFixed(2)}</span></div>}
+                {stockQuote.week52_low  != null && <div className="stock-quote-cell"><span>52W Low</span><span>${Number(stockQuote.week52_low).toFixed(2)}</span></div>}
+              </div>
+            </div>
+          )}
+
           <Row className="mb-3">
             <Col>
               <Form.Label className="ladder-edit-label">Ladder Name</Form.Label>
@@ -341,10 +395,47 @@ function LadderEditScreen() {
               </InputGroup>
             </Col>
             <Col>
-              <Form.Label className="ladder-edit-label">Gap <span className="ladder-edit-hint">How often the Buy Trade triggers</span></Form.Label>
+              <Form.Label className="ladder-edit-label">
+                Gap <span className="ladder-edit-hint">How often the Buy Trade triggers</span>
+                {pennyStockWarning && (
+                  <span style={{ color: "#ffaa00", fontWeight: "bold", marginLeft: "8px" }}>⚠ Penny Stock</span>
+                )}
+              </Form.Label>
+              {pennyStockWarning && (
+                <div style={{
+                  color: "#7a5c00",
+                  backgroundColor: "#2a2200",
+                  border: "1px solid #ffaa00",
+                  borderRadius: "4px",
+                  padding: "8px 10px",
+                  marginBottom: "8px",
+                  fontSize: "0.82rem",
+                  lineHeight: "1.4",
+                }}>
+                  <strong style={{ color: "#ffaa00" }}>⚠ Penny Stock Restriction:</strong>{" "}
+                  <span style={{ color: "#e0c97a" }}>This stock is ${stockPrice?.toFixed(2)}. Tradier limits buy orders to within 10% of price.</span>{" "}
+                  <strong style={{ color: "#ffaa00" }}>GAP cannot exceed $0.10.</strong>
+                </div>
+              )}
               <InputGroup>
                 <InputGroup.Text className="dark-input-addon">$</InputGroup.Text>
-                <Form.Control type="number" placeholder="Enter gap" value={gap} className="dark-input" onChange={(e) => setGap(e.target.value)} />
+                <Form.Control
+                  type="number"
+                  placeholder="Enter gap"
+                  value={gap}
+                  className="dark-input"
+                  step={pennyStockWarning ? 0.01 : 0.1}
+                  max={pennyStockWarning ? 0.10 : undefined}
+                  style={pennyStockWarning ? { borderColor: "#ffaa00" } : {}}
+                  onChange={(e) => {
+                    const val = parseFloat(e.target.value);
+                    if (pennyStockWarning && val > 0.10) {
+                      setGap(0.10);
+                    } else {
+                      setGap(e.target.value);
+                    }
+                  }}
+                />
               </InputGroup>
             </Col>
           </Row>
@@ -366,11 +457,32 @@ function LadderEditScreen() {
             </Col>
             <Col>
               <Form.Label className="ladder-edit-label">Shares Per Trade (SPT)</Form.Label>
-              <Form.Control type="number" placeholder="Enter shares per trade" className="dark-input"
-                value={type === "Percentage" && market === "Stocks" ? 0.0 : shares_per_trade}
-                disabled={type === "Percentage"}
-                onChange={(e) => setSharesPerTrade(e.target.value)}
-              />
+              {type === "Percentage" ? (
+                <div className="dark-input form-control spt-formula-display">
+                  {stockPrice && amount_per_trade > 0 ? (
+                    <span className="spt-formula-text">
+                      <span className="spt-formula-val">${Number(amount_per_trade).toLocaleString()}</span>
+                      <span className="spt-formula-op">&nbsp;÷&nbsp;</span>
+                      <span className="spt-formula-val">${Number(stockPrice).toFixed(2)}</span>
+                      <span className="spt-formula-op">&nbsp;=&nbsp;</span>
+                      <span className="spt-formula-result">{Math.floor(amount_per_trade / stockPrice)} shares</span>
+                      <br />
+                      <span className="spt-formula-hint">Calculated at trade time · rounded down</span>
+                    </span>
+                  ) : (
+                    <span className="spt-formula-text">
+                      <span className="spt-formula-op">Amount Per Trade&nbsp;÷&nbsp;Stock Price&nbsp;=&nbsp;SPT</span>
+                      <br />
+                      <span className="spt-formula-hint">{stockPrice ? 'Set an Amount Per Trade above' : 'Select a symbol to preview'}</span>
+                    </span>
+                  )}
+                </div>
+              ) : (
+                <Form.Control type="number" placeholder="Enter shares per trade" className="dark-input"
+                  value={shares_per_trade}
+                  onChange={(e) => setSharesPerTrade(e.target.value)}
+                />
+              )}
             </Col>
           </Row>
 

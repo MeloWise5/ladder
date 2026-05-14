@@ -267,6 +267,46 @@ def lookupStock(request, symbol):
     
 @api_view(['GET'])
 @permission_classes([IsAuthenticated])
+def getStockQuote(request, symbol):
+    try:
+        load_dotenv()
+        TRADIER_TOKEN = os.getenv("TRADIER_TOKEN")
+        url = "https://api.tradier.com/v1/markets/quotes"
+        params = {'symbols': symbol}
+        headers = {
+            'Authorization': f'Bearer {TRADIER_TOKEN}',
+            'Accept': 'application/json'
+        }
+        response = requests.get(url, params=params, headers=headers)
+        if response.status_code == 200:
+            data = response.json()
+            quote = data.get('quotes', {}).get('quote', {})
+            if isinstance(quote, list):
+                quote = quote[0]
+            price = quote.get('last') or quote.get('close') or 0
+            def _f(val):
+                try: return float(val) if val is not None else None
+                except (TypeError, ValueError): return None
+            return Response({
+                'price':              _f(price),
+                'change':             _f(quote.get('change')),
+                'change_percentage':  _f(quote.get('change_percentage')),
+                'volume':             quote.get('volume'),
+                'open':               _f(quote.get('open')),
+                'high':               _f(quote.get('high')),
+                'low':                _f(quote.get('low')),
+                'week52_high':        _f(quote.get('week_52_high')),
+                'week52_low':         _f(quote.get('week_52_low')),
+                'bid':                _f(quote.get('bid')),
+                'ask':                _f(quote.get('ask')),
+            })
+        else:
+            return Response({'error': 'API call failed'}, status=500)
+    except Exception as e:
+        return Response({'error': str(e)}, status=500)
+
+@api_view(['GET'])
+@permission_classes([IsAuthenticated])
 def lookupCrypto(request, symbol):
 
     url = "https://api.exchange.coinbase.com/products"
