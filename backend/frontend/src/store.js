@@ -3,7 +3,7 @@ import { thunk }  from 'redux-thunk'
 
 import { 
     ladderListReducer, ladderAdminListReducer, ladderDetailsReducer, ladderDeleteReducer, ladderCreateReducer,
-    ladderUpdateReducer, ladderUpdateEnabledReducer, ladderUpdateAlertReducer } from './reducers/ladderReducers'
+    ladderUpdateReducer, ladderUpdateEnabledReducer, ladderUpdateAlertReducer, ladderBulkEnableReducer } from './reducers/ladderReducers'
 import { 
     userLoginReducer, userRegisterReducer, userDetailsReducer, 
     userListReducer, userDeleteReducer, userUpdateReducer,
@@ -31,6 +31,7 @@ const reducer = combineReducers({
     ladderUpdate: ladderUpdateReducer,
     ladderUpdateEnabled: ladderUpdateEnabledReducer,
     ladderUpdateAlert: ladderUpdateAlertReducer,
+    ladderBulkEnable: ladderBulkEnableReducer,
     cryptoDelete: cryptoDeleteReducer,
     stocksDelete: stocksDeleteReducer,
     transactionsDelete: transactionsDeleteReducer,  

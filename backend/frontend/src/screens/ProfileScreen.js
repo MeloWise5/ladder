@@ -41,6 +41,7 @@ function ProfileScreen() {
     const [monthlyReport, setMonthlyReport] = useState(false)
     const [notifyEmail, setNotifyEmail] = useState(false)
     const [notifySms, setNotifySms] = useState(false)
+    const [smsConsent, setSmsConsent] = useState(false)
     const [notifMessage, setNotifMessage] = useState('')
     const [notifError, setNotifError] = useState('')
 
@@ -142,6 +143,7 @@ function ProfileScreen() {
             setMonthlyReport(user.profile.monthly_report || false)
             setNotifyEmail(user.profile.notify_email || false)
             setNotifySms(user.profile.notify_sms || false)
+            setSmsConsent(user.profile.notify_sms || false)
         }
     }, [user])
 
@@ -179,6 +181,10 @@ function ProfileScreen() {
         }
         if (hasMethod && !hasFrequency) {
             setNotifError('Please select a report frequency (Weekly or Monthly).')
+            return
+        }
+        if (notifySms && !smsConsent) {
+            setNotifError('Please confirm your consent to receive text messages.')
             return
         }
         setNotifMessage('')
@@ -445,13 +451,29 @@ function ProfileScreen() {
                 <button
                   type="button"
                   className={`notif-icon-btn${notifySms ? ' active' : ''}${!phoneNumber ? ' disabled' : ''}`}
-                  onClick={() => { if (phoneNumber) setNotifySms(v => !v) }}
+                  onClick={() => { if (phoneNumber) { setNotifySms(v => !v); setSmsConsent(false) } }}
                   title={!phoneNumber ? 'Add a phone number above to enable' : 'Text notifications'}
                 >
                   <i className="fa-solid fa-comment-sms" />
                   <span className="notif-icon-label">Text</span>
                 </button>
               </div>
+
+              {/* SMS consent — only shown when Text is enabled */}
+              {notifySms && (
+                <label className="sms-consent-label">
+                  <input
+                    type="checkbox"
+                    checked={smsConsent}
+                    onChange={e => setSmsConsent(e.target.checked)}
+                    className="sms-consent-checkbox"
+                  />
+                  <span>
+                    I agree to receive weekly/monthly account summary texts from Ladder.
+                    Msg &amp; data rates may apply. Reply <strong>STOP</strong> to unsubscribe at any time.
+                  </span>
+                </label>
+              )}
 
               {/* Inline summary / validation feedback */}
               {(() => {

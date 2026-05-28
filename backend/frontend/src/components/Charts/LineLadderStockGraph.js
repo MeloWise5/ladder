@@ -120,6 +120,10 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                             ds.borderColor = `rgba(245,166,35,${(0.9 * a).toFixed(3)})`;
                         } else if (ds.label === 'Sell Price') {
                             ds.borderColor = `rgba(68,220,100,${(0.9 * a).toFixed(3)})`;
+                        } else if (ds.label === 'OTOCO Limit') {
+                            ds.borderColor = `rgba(68,220,100,${(0.9 * a).toFixed(3)})`;
+                        } else if (ds.label === 'OTOCO Stop') {
+                            ds.borderColor = `rgba(255,68,68,${(0.9 * a).toFixed(3)})`;
                         } else if (ds.label === 'Highlighted Buy') {
                             // Recreate a faded canvas icon each frame
                             ds.pointStyle = makeLadderCanvas(`rgba(245,166,35,${(0.95 * a).toFixed(3)})`, 26);
@@ -544,6 +548,36 @@ export default function LineLadderStockGraph({ SYMBOL, DATE_METHOD, selectedStep
                 fill: false,
                 order: 0,
             }] : []),
+            // ── OTOCO Limit (green) and Stop Loss (red) lines ──
+            ...(displayStep?.transaction?.ladder_type?.toLowerCase() === 'otoco' &&
+                displayStep?.transaction?.buy_price ? [
+                ...(displayStep.transaction.limit_price_in_percentage ? [{
+                    label: 'OTOCO Limit',
+                    data: chartData.labels.map((_, i) => ({ x: i, y: Number(displayStep.transaction.buy_price) * (1 + Number(displayStep.transaction.limit_price_in_percentage) / 100) })),
+                    borderColor: 'rgba(68, 220, 100, 0.9)',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    order: 0,
+                }] : []),
+                ...(displayStep.transaction.stop_price_in_percentage ? [{
+                    label: 'OTOCO Stop',
+                    data: chartData.labels.map((_, i) => ({ x: i, y: Number(displayStep.transaction.buy_price) * (1 - Number(displayStep.transaction.stop_price_in_percentage) / 100) })),
+                    borderColor: 'rgba(255, 68, 68, 0.9)',
+                    borderWidth: 2,
+                    borderDash: [6, 3],
+                    backgroundColor: 'transparent',
+                    pointRadius: 0,
+                    pointHoverRadius: 0,
+                    showLine: true,
+                    fill: false,
+                    order: 0,
+                }] : []),
+            ] : []),
             // ── Non-heatmap dot connector (line from buy dot to sell dot) ──
             ...((() => {
                 if (!selectedDotTxnId) return [];

@@ -10,6 +10,7 @@ LADDER_UPDATE_FAIL, LADDER_UPDATE_REQUEST, LADDER_UPDATE_SUCCESS,
 LADDER_UPDATE_ENABLED_FAIL, LADDER_UPDATE_ENABLED_REQUEST, LADDER_UPDATE_ENABLED_SUCCESS,
 LADDER_BULK_CREATE_REQUEST, LADDER_BULK_CREATE_SUCCESS, LADDER_BULK_CREATE_FAIL,
 LADDER_UPDATE_ALERT_REQUEST, LADDER_UPDATE_ALERT_SUCCESS, LADDER_UPDATE_ALERT_FAIL,
+LADDER_BULK_ENABLE_REQUEST, LADDER_BULK_ENABLE_SUCCESS, LADDER_BULK_ENABLE_FAIL,
 
 } from '../constants/ladderConstants'
 
@@ -282,4 +283,27 @@ export const updateAlertLadder = (ladderOrId, alertValue) => async (dispatch, ge
                 error.response.data.detail : error.message,
         })
     }       
+}
+
+export const bulkEnableLadders = (enable) => async (dispatch, getState) => {
+    try {
+        dispatch({ type: LADDER_BULK_ENABLE_REQUEST })
+        const {
+            userLogin: { userInfo },
+        } = getState()
+        const config = {
+            headers: {
+                'Content-Type': 'application/json',
+                Authorization: `Bearer ${userInfo.token}`,
+            },
+        }
+        await axios.put('/api/ladders/bulk-enable/', { enable }, config)
+        dispatch({ type: LADDER_BULK_ENABLE_SUCCESS })
+    } catch (error) {
+        dispatch({
+            type: LADDER_BULK_ENABLE_FAIL,
+            payload: error.response && error.response.data.detail ?
+                error.response.data.detail : error.message,
+        })
+    }
 }

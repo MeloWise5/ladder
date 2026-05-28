@@ -189,6 +189,20 @@ def updateAlertLadder(request, pk):
     except Exception as e:
         return Response({'error': 'API call failed', 'details': str(e)}, status=500)
 
+@api_view(['PUT'])
+@permission_classes([IsAdminUser])
+def bulkEnableLadders(request):
+    try:
+        enable = request.data.get('enable')
+        if enable is None:
+            return Response({'error': '"enable" field is required'}, status=status.HTTP_400_BAD_REQUEST)
+        Ladders.objects.all().update(enable=bool(enable))
+        ladders = Ladders.objects.all().order_by('_id')
+        serializer = LadderListAdminSerializer(ladders, many=True)
+        return Response(serializer.data)
+    except Exception as e:
+        return Response({'error': 'Bulk enable failed', 'details': str(e)}, status=500)
+
 @api_view(['DELETE'])
 @permission_classes([IsAdminUser])
 def deleteLadder(request, pk):

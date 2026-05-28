@@ -276,8 +276,30 @@ function TransactionsTable({ladder=false, status, selectedStep, onStepClick}) {
             if (!matchingStep) return;
             onStepClick(selectedStep && String(selectedStep._id) === String(matchingStep._id) ? null : matchingStep);
           };
+          const isOtoco = closed_transactions.ladder_type?.toLowerCase() === 'otoco';
+          const buyCancelId  = isOtoco ? closed_transactions.order_id : closed_transactions.buy_id;
+          const sellCancelId = isOtoco ? closed_transactions.order_id : closed_transactions.sell_id;
+          const limitPct = Number(closed_transactions.limit_price_in_percentage || 0);
+          const stopPct  = Number(closed_transactions.stop_price_in_percentage  || 0);
           return (
             <React.Fragment key={closed_transactions._id}>
+              {/* OTOCO Order ID header */}
+              {isOtoco && closed_transactions.order_id && (
+                <tr className="otoco-order-id-row">
+                  <td colSpan={11} className="otoco-order-id-cell">
+                    <div className="otoco-order-id-cell-flex">
+                    <span className="otoco-order-id-label">ORDER ID</span>
+                    <span className="otoco-order-id-value">{closed_transactions.order_id}</span>
+                    {buyCancelId && buyCancelId !== '-' && buyCancelId !== '0' && String(buyCancelId).length > 2 && (
+                      <Button variant='danger' size='sm' className="otoco-cancel-btn"
+                        onClick={(e) => { e.stopPropagation(); cancelOrderHandler(ladder.market, buyCancelId, closed_transactions._id, 'OTOCO', closed_transactions.step); }}>
+                        <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'middle', display:'inline-block', marginRight:'4px'}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                        Cancel Order
+                      </Button>
+                    )}</div>
+                  </td>
+                </tr>
+              )}
               {/* Buy Row */}
               <tr
                 ref={el => { rowRefs.current[closed_transactions._id] = el; }}
@@ -285,19 +307,19 @@ function TransactionsTable({ladder=false, status, selectedStep, onStepClick}) {
                 onClick={handleRowClick}
                 style={{ cursor: onStepClick ? 'pointer' : 'default' }}
               >
-                <td rowSpan={2}>{closed_transactions._id}</td>
-                <td rowSpan={2}>{closed_transactions.profit ? fmt(closed_transactions.profit) : '-'}</td>
-                <td rowSpan={2}>{closed_transactions.step_details['step_code']}</td>
+                <td rowSpan={isOtoco ? 3 : 2}>{closed_transactions._id}</td>
+                <td rowSpan={isOtoco ? 3 : 2}>{closed_transactions.profit ? fmt(closed_transactions.profit) : '-'}</td>
+                <td rowSpan={isOtoco ? 3 : 2}>{closed_transactions.step_details['step_code']}</td>
                 <td>BUY</td>
                 <td>{closed_transactions.buy_date && !['',0,'0', null, undefined].includes(closed_transactions.buy_date) ? 
                       formatDate(closed_transactions.buy_date) : 
-                      (closed_transactions.buy_id && closed_transactions.buy_id !== '-' && closed_transactions.buy_id !== '0' && closed_transactions.buy_id.length > 2 ? 
+                      (!isOtoco && buyCancelId && buyCancelId !== '-' && buyCancelId !== '0' && String(buyCancelId).length > 2 ? 
                         <Button 
                         variant='danger' 
                         size='sm' 
                         onClick={() => cancelOrderHandler(
                                           ladder.market,
-                                          closed_transactions.buy_id, 
+                                          buyCancelId, 
                                           closed_transactions._id, 
                                           'BUY', 
                                           closed_transactions.step )}>
@@ -313,35 +335,78 @@ function TransactionsTable({ladder=false, status, selectedStep, onStepClick}) {
                 <td>{fmt(closed_transactions.buy_fee)}</td>
                 <td>{fmt(closed_transactions.buy_total)}</td>
               </tr>
-              {/* Sell Row */}
-              <tr className={flashId === closed_transactions._id ? 'txn-row-flash' : ''}
-                onClick={handleRowClick}
-                style={{ cursor: onStepClick ? 'pointer' : 'default' }}
-              >
-                <td>SELL</td>
-                <td>{closed_transactions.sell_date && !['',0,'0', null, undefined].includes(closed_transactions.sell_date) ? 
-                      formatDate(closed_transactions.sell_date) : 
-                      ( closed_transactions.sell_id && closed_transactions.sell_id !== '-' && closed_transactions.sell_id !== '0' && closed_transactions.sell_id.length > 2 ?
-                        <Button 
-                        variant='danger' 
-                        size='sm' 
-                        onClick={() => cancelOrderHandler(
-                                          closed_transactions.ladder_market,
-                                          closed_transactions.sell_id, 
-                                          closed_transactions._id, 
-                                          'SELL', 
-                                          closed_transactions.step )}>
-                          <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'middle', display:'block'}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
-                        </Button> : ''
-                        )
-                    }</td>
-                <td>{formatDate(closed_transactions.sell_placed) || ''}</td>
-                <td>{closed_transactions.sell_id || ''}</td>
-                <td>{fmtShares(closed_transactions.shares_per_trade)}</td>
-                <td>{closed_transactions.sell_price && !['',0,'0', null, undefined].includes(closed_transactions.sell_price) ? get_price(closed_transactions,'SELL') : '-'}</td>
-                <td>{fmt(closed_transactions.sell_fee)}</td>
-                <td>{fmt(closed_transactions.sell_total)}</td>
-              </tr>
+              {/* Sell Row(s) */}
+              {isOtoco ? (
+                <>
+                  {/* LIMIT sell (profit target) — green */}
+                  <tr className={`otoco-limit-row${flashId === closed_transactions._id ? ' txn-row-flash' : ''}`}
+                    onClick={handleRowClick}
+                    style={{ cursor: onStepClick ? 'pointer' : 'default' }}
+                  >
+                    <td className="otoco-limit-side">LIMIT SELL</td>
+                    <td>{closed_transactions.sell_date && !['',0,'0',null,undefined].includes(closed_transactions.sell_date) ? formatDate(closed_transactions.sell_date) : '—'}</td>
+                    <td>{formatDate(closed_transactions.sell_placed) || '—'}</td>
+                    <td>{closed_transactions.sell_id || '—'}</td>
+                    <td>{fmtShares(closed_transactions.shares_per_trade)}</td>
+                    <td className="otoco-limit-price">
+                      {closed_transactions.buy_price && !['',0,'0',null,undefined].includes(closed_transactions.buy_price)
+                        ? `$${(Number(closed_transactions.buy_price) * (1 + limitPct / 100)).toFixed(2)}`
+                        : '—'}
+                      {limitPct > 0 && <span className="otoco-pct-badge up">+{limitPct}%</span>}
+                    </td>
+                    <td>—</td>
+                    <td>—</td>
+                  </tr>
+                  {/* STOP sell (stop loss) — red */}
+                  <tr className={`otoco-stop-row${flashId === closed_transactions._id ? ' txn-row-flash' : ''}`}
+                    onClick={handleRowClick}
+                    style={{ cursor: onStepClick ? 'pointer' : 'default' }}
+                  >
+                    <td className="otoco-stop-side">STOP SELL</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>—</td>
+                    <td>{fmtShares(closed_transactions.shares_per_trade)}</td>
+                    <td className="otoco-stop-price">
+                      {closed_transactions.buy_price && !['',0,'0',null,undefined].includes(closed_transactions.buy_price)
+                        ? `$${(Number(closed_transactions.buy_price) * (1 - stopPct / 100)).toFixed(2)}`
+                        : '—'}
+                      {stopPct > 0 && <span className="otoco-pct-badge down">-{stopPct}%</span>}
+                    </td>
+                    <td>—</td>
+                    <td>—</td>
+                  </tr>
+                </>
+              ) : (
+                <tr className={flashId === closed_transactions._id ? 'txn-row-flash' : ''}
+                  onClick={handleRowClick}
+                  style={{ cursor: onStepClick ? 'pointer' : 'default' }}
+                >
+                  <td>SELL</td>
+                  <td>{closed_transactions.sell_date && !['',0,'0', null, undefined].includes(closed_transactions.sell_date) ? 
+                        formatDate(closed_transactions.sell_date) : 
+                        ( sellCancelId && sellCancelId !== '-' && sellCancelId !== '0' && String(sellCancelId).length > 2 ?
+                          <Button 
+                          variant='danger' 
+                          size='sm' 
+                          onClick={() => cancelOrderHandler(
+                                            closed_transactions.ladder_market,
+                                            sellCancelId, 
+                                            closed_transactions._id, 
+                                            'SELL', 
+                                            closed_transactions.step )}>
+                            <svg xmlns="http://www.w3.org/2000/svg" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round" style={{verticalAlign:'middle', display:'block'}}><circle cx="12" cy="12" r="10"/><line x1="15" y1="9" x2="9" y2="15"/><line x1="9" y1="9" x2="15" y2="15"/></svg>
+                          </Button> : ''
+                          )
+                      }</td>
+                  <td>{formatDate(closed_transactions.sell_placed) || ''}</td>
+                  <td>{closed_transactions.sell_id || ''}</td>
+                  <td>{fmtShares(closed_transactions.shares_per_trade)}</td>
+                  <td>{closed_transactions.sell_price && !['',0,'0', null, undefined].includes(closed_transactions.sell_price) ? get_price(closed_transactions,'SELL') : '-'}</td>
+                  <td>{fmt(closed_transactions.sell_fee)}</td>
+                  <td>{fmt(closed_transactions.sell_total)}</td>
+                </tr>
+              )}
             </React.Fragment>
           );
         })}

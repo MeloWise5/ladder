@@ -513,7 +513,7 @@ class LadderListSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = Ladders
-        fields = ['_id', 'name', 'symbol', 'enable', 'alert', 'profit', 'budget', 'debt', 'last','trending','percent_change_24h', 'daily_profit', 'daily_debt', 'closed_daily_transaction_count', 'open_daily_transaction_count']
+        fields = ['_id', 'name', 'symbol', 'enable', 'alert', 'market', 'profit', 'budget', 'debt', 'last','trending','percent_change_24h', 'daily_profit', 'daily_debt', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
     def get_daily_profit(self, obj):
         """Get daily_profit from the ladder's most recent snapshot"""
@@ -877,6 +877,8 @@ class TransactionsSerializer(serializers.ModelSerializer):
     step_details = serializers.SerializerMethodField(read_only=True)
     ladder_type = serializers.SerializerMethodField(read_only=True)
     ladder_market = serializers.SerializerMethodField(read_only=True)
+    limit_price_in_percentage = serializers.SerializerMethodField(read_only=True)
+    stop_price_in_percentage = serializers.SerializerMethodField(read_only=True)
     
     class Meta:
         model = Transactions
@@ -891,7 +893,17 @@ class TransactionsSerializer(serializers.ModelSerializer):
         if obj.ladder:
             return obj.ladder.market
         return None
-    
+
+    def get_limit_price_in_percentage(self, obj):
+        if obj.ladder:
+            return float(obj.ladder.limit_price_in_percentage or 0)
+        return 0
+
+    def get_stop_price_in_percentage(self, obj):
+        if obj.ladder:
+            return float(obj.ladder.stop_price_in_percentage or 0)
+        return 0
+
     def get_step_details(self, obj):
         """Include step details without circular reference"""
         if obj.step:

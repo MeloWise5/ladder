@@ -9,13 +9,12 @@ urlpatterns = [
     path('lookupt/<str:symbol>/',views.lookupStock, name="lookup stock"),
     path('lookupc/<str:symbol>/',views.lookupCrypto, name="lookup crypto"),
     path('quotet/<str:symbol>/',views.getStockQuote, name="stock quote"),
-    path('<str:pk>/',views.getLadder, name="ladder"),
     path('create',views.createLadder, name="create ladder"),
     path('bulk-create',views.bulkCreateLadders, name="bulk create ladders"),
-    
+    path('bulk-enable/',views.bulkEnableLadders, name="bulk enable ladders"),
     path('update/<str:pk>/',views.updateLadder, name="update ladder"),
     path('delete/<str:pk>/',views.deleteLadder, name="delete ladder"),
     path('updateenabled/<str:pk>/',views.updateEnabledLadder, name="update enabled ladder"),
     path('updatealert/<str:pk>/',views.updateAlertLadder, name="update alert ladder"),
-    
+    path('<str:pk>/',views.getLadder, name="ladder"),
 ]

@@ -16,6 +16,10 @@ function HomeScreen() {
   const [ladderId, setLadderId] = useState(null)
   const [isInitialized, setIsInitialized] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
+  const [activeStocksOpen, setActiveStocksOpen] = useState(true)
+  const [activeCryptoOpen, setActiveCryptoOpen] = useState(true)
+  const [disabledStocksOpen, setDisabledStocksOpen] = useState(false)
+  const [disabledCryptoOpen, setDisabledCryptoOpen] = useState(false)
   const hasFetchedRef = useRef(false)
 
   const changeLadderHandler = (newLadderId) => {
@@ -34,12 +38,26 @@ function HomeScreen() {
   // Set initial ladder when ladders first load; also select newest when list grows
   useEffect(() => {
     if (ladders && ladders.length > 0) {
+      const sidebarFirst = () => {
+        const bySymbol = (a, b) => (a.symbol || '').localeCompare(b.symbol || '')
+        const hasActivity = l => Number(l.daily_profit || 0) !== 0 || Number(l.daily_debt || 0) !== 0
+        const activeStocks   = [...ladders].filter(l => l.enable && l.market?.toLowerCase() === 'stocks')
+        const activeCrypto   = [...ladders].filter(l => l.enable && l.market?.toLowerCase() === 'crypto')
+        const withAct  = g => g.filter(l =>  hasActivity(l)).sort(bySymbol)
+        const withOut  = g => g.filter(l => !hasActivity(l)).sort(bySymbol)
+        const ordered  = [
+          ...withAct(activeStocks), ...withOut(activeStocks),
+          ...withAct(activeCrypto), ...withOut(activeCrypto),
+          ...[...ladders].filter(l => !l.enable).sort(bySymbol),
+        ]
+        return (ordered[0] || ladders[0])._id
+      }
       if (!isInitialized) {
-        setLadderId(ladders[0]._id)
+        setLadderId(sidebarFirst())
         setIsInitialized(true)
       } else if (!ladders.find(l => l._id === ladderId)) {
-        // Previously selected ladder is gone (deleted), fall back to first
-        setLadderId(ladders[0]._id)
+        // Previously selected ladder is gone (deleted), fall back to sidebar first
+        setLadderId(sidebarFirst())
       }
     }
   }, [ladders, isInitialized, ladderId])
@@ -55,9 +73,23 @@ function HomeScreen() {
       </div>
     )
   }
-  const ladder_list = ladders ? (
-    ladders.map(ladder => {
-      console.log(ladder)
+  const sortBySymbol = (arr) => [...arr].sort((a, b) => (a.symbol || '').localeCompare(b.symbol || ''))
+
+  const sortActiveGroup = (arr) => {
+    const hasActivity = l => Number(l.daily_profit || 0) !== 0 || Number(l.daily_debt || 0) !== 0
+    const active   = sortBySymbol(arr.filter(l =>  hasActivity(l)))
+    const inactive = sortBySymbol(arr.filter(l => !hasActivity(l)))
+    return [...active, ...inactive]
+  }
+
+  const activeStocks   = ladders ? sortActiveGroup(ladders.filter(l => l.enable  && l.market?.toLowerCase() === 'stocks')) : []
+  const activeCrypto   = ladders ? sortActiveGroup(ladders.filter(l => l.enable  && l.market?.toLowerCase() === 'crypto')) : []
+  const disabledStocks = ladders ? sortBySymbol(ladders.filter(l => !l.enable && l.market?.toLowerCase() === 'stocks')) : []
+  const disabledCrypto = ladders ? sortBySymbol(ladders.filter(l => !l.enable && l.market?.toLowerCase() === 'crypto')) : []
+  const otherLadders   = ladders ? sortBySymbol(ladders.filter(l => !['stocks','crypto'].includes(l.market?.toLowerCase()))) : []
+
+  const renderCard = (ladder) => {
+      //console.log(ladder)
       const isSelected = ladderId === ladder._id
       const isSampleName = ladder.name === 'Sample Name'
       const isDisabled = !ladder.enable
@@ -90,6 +122,7 @@ function HomeScreen() {
       return (
         <div
           key={ladder._id}
+
           className={`ladder-card${isSelected ? ' selected' : ''}${isSampleName ? ' sample-card' : ''}${isDisabled ? ' disabled-card' : ''}${changeClass}`}
           onClick={() => changeLadderHandler(ladder._id)}
         >
@@ -162,8 +195,7 @@ function HomeScreen() {
           </div>
         </div>
       )
-  })
-  ) : null
+  }
 
   return (
     <div className="app-body">
@@ -203,7 +235,49 @@ function HomeScreen() {
           ) : error ? (
             <Message variant='danger'>{error}</Message>
           ) : (
-            ladder_list
+            <>
+              {activeStocks.length > 0 && (
+                <div className="sidebar-section">
+                  <div className="sidebar-section-header sidebar-section-header--active" onClick={() => setActiveStocksOpen(o => !o)}>
+                    <span className="sidebar-section-title">ACTIVE STOCKS</span>
+                    <span className="sidebar-section-count">{activeStocks.length}</span>
+                    <span className={`sidebar-section-chevron${activeStocksOpen ? ' open' : ''}`}>▾</span>
+                  </div>
+                  {activeStocksOpen && activeStocks.map(renderCard)}
+                </div>
+              )}
+              {activeCrypto.length > 0 && (
+                <div className="sidebar-section">
+                  <div className="sidebar-section-header sidebar-section-header--active" onClick={() => setActiveCryptoOpen(o => !o)}>
+                    <span className="sidebar-section-title">ACTIVE CRYPTO</span>
+                    <span className="sidebar-section-count">{activeCrypto.length}</span>
+                    <span className={`sidebar-section-chevron${activeCryptoOpen ? ' open' : ''}`}>▾</span>
+                  </div>
+                  {activeCryptoOpen && activeCrypto.map(renderCard)}
+                </div>
+              )}
+              {disabledStocks.length > 0 && (
+                <div className="sidebar-section">
+                  <div className="sidebar-section-header sidebar-section-header--disabled" onClick={() => setDisabledStocksOpen(o => !o)}>
+                    <span className="sidebar-section-title">DISABLED STOCKS</span>
+                    <span className="sidebar-section-count">{disabledStocks.length}</span>
+                    <span className={`sidebar-section-chevron${disabledStocksOpen ? ' open' : ''}`}>▾</span>
+                  </div>
+                  {disabledStocksOpen && disabledStocks.map(renderCard)}
+                </div>
+              )}
+              {disabledCrypto.length > 0 && (
+                <div className="sidebar-section">
+                  <div className="sidebar-section-header sidebar-section-header--disabled" onClick={() => setDisabledCryptoOpen(o => !o)}>
+                    <span className="sidebar-section-title">DISABLED CRYPTO</span>
+                    <span className="sidebar-section-count">{disabledCrypto.length}</span>
+                    <span className={`sidebar-section-chevron${disabledCryptoOpen ? ' open' : ''}`}>▾</span>
+                  </div>
+                  {disabledCryptoOpen && disabledCrypto.map(renderCard)}
+                </div>
+              )}
+              {otherLadders.length > 0 && otherLadders.map(renderCard)}
+            </>
           )}
         </div>
       </div>

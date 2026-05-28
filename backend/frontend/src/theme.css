@@ -21,12 +21,12 @@
   --color-red:      #ff4d4d;
   --color-red-dim:  #c73c3c;
   --color-yellow:   #f0e040;
-  --color-muted:    #8b949e;
+  --color-muted:    #b0bbc7;
 
   /* Text */
   --text-primary:   #e6edf3;
-  --text-secondary: #8b949e;
-  --text-dim:       #6e7681;
+  --text-secondary: #b0bbc7;
+  --text-dim:       #9aa5b0;
 
   /* Borders */
   --border:         #30363d;
@@ -230,6 +230,62 @@ html, body, #root {
 .dash-sidebar-list::-webkit-scrollbar-thumb {
   background: var(--border);
   border-radius: 4px;
+}
+
+/* ---- Sidebar Market Sections ---- */
+.sidebar-section-header {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 5px 10px;
+  cursor: pointer;
+  user-select: none;
+  background: var(--bg-card);
+  border-bottom: 1px solid var(--border);
+  position: sticky;
+  top: 0;
+  z-index: 1;
+}
+
+.sidebar-section-title {
+  font-size: 0.68rem;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  color: var(--text-dim);
+  flex: 1;
+}
+
+.sidebar-section-count {
+  font-size: 0.68rem;
+  color: var(--text-dim);
+  background: var(--border);
+  border-radius: 10px;
+  padding: 0 6px;
+  line-height: 1.6;
+}
+
+.sidebar-section-header--active {
+  border-left: 2px solid var(--color-green, #00c48c);
+}
+
+.sidebar-section-header--disabled {
+  border-left: 2px solid var(--border);
+}
+
+.sidebar-section-header--disabled .sidebar-section-title {
+  opacity: 0.5;
+}
+
+.sidebar-section-chevron {
+  font-size: 0.75rem;
+  color: var(--text-dim);
+  transition: transform 0.2s;
+  display: inline-block;
+  transform: rotate(-90deg);
+}
+
+.sidebar-section-chevron.open {
+  transform: rotate(0deg);
 }
 
 /* ---- Ladder Card in Sidebar ---- */
@@ -820,7 +876,7 @@ html, body, #root {
 }
 
 .txn-table-body {
-  max-height: 150px;
+  max-height: 300px;
   overflow-y: auto;
   overflow-x: auto;
   border-radius: 0 0 var(--radius-md) var(--radius-md);
@@ -2366,6 +2422,25 @@ html, body, #root {
   line-height: 1.4;
 }
 
+.sms-consent-label {
+  display: flex;
+  align-items: flex-start;
+  gap: 8px;
+  margin-top: 12px;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  line-height: 1.5;
+  cursor: pointer;
+}
+.sms-consent-checkbox {
+  margin-top: 2px;
+  flex-shrink: 0;
+  accent-color: var(--color-green);
+  width: 14px;
+  height: 14px;
+  cursor: pointer;
+}
+
 @media (max-width: 768px) {
   .prof-layout {
     flex-direction: column;
@@ -2518,7 +2593,6 @@ html, body, #root {
   display: inline-flex;
   align-items: center;
   gap: 7px;
-  margin-left: auto;
   padding: 6px 14px;
   font-size: 0.78rem;
   font-weight: 700;
@@ -2534,6 +2608,56 @@ html, body, #root {
 .admin-create-btn:hover {
   background: var(--color-yellow);
   color: var(--bg-base);
+}
+
+.admin-bulk-toggle-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  font-size: 0.78rem;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  margin-left: auto;
+}
+.admin-bulk-toggle-btn--enable {
+  color: var(--color-green);
+  border: 1px solid var(--color-green);
+}
+.admin-bulk-toggle-btn--enable:hover {
+  background: var(--color-green);
+  color: var(--bg-base);
+}
+.admin-bulk-toggle-btn--disable {
+  color: var(--color-red);
+  border: 1px solid var(--color-red);
+}
+.admin-bulk-toggle-btn--disable:hover {
+  background: var(--color-red);
+  color: #fff;
+}
+.admin-bulk-toggle-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.sortable-th {
+  cursor: pointer;
+  user-select: none;
+  white-space: nowrap;
+}
+.sortable-th:hover {
+  color: var(--text-primary);
+}
+.sort-arrow {
+  font-size: 0.65rem;
+  color: var(--color-yellow);
+  margin-left: 2px;
 }
 
 /* Ladder list column widths */
@@ -2624,6 +2748,80 @@ html, body, #root {
   margin-left: 6px;
 }
 
+.otoco-order-id-row {
+  background: rgba(255, 190, 50, 0.07);
+  border-top: 1px solid rgba(255, 190, 50, 0.25);
+}
+
+.otoco-order-id-cell {
+  align-items: center;
+}
+.otoco-order-id-cell-flex {
+  padding: 5px 12px !important;
+  letter-spacing: 0.04em;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 12px;
+}
+.otoco-cancel-btn {
+  font-size: 0.72rem;
+  padding: 2px 8px !important;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+}
+
+.otoco-order-id-label {
+  font-size: 0.65rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  color: rgba(255, 190, 50, 0.7);
+  margin-right: 10px;
+  letter-spacing: 0.1em;
+}
+
+.otoco-order-id-value {
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: rgba(255, 190, 50, 0.95);
+  font-family: monospace;
+}
+
+.otoco-limit-row { background: rgba(126, 207, 126, 0.06); }
+.otoco-stop-row  { background: rgba(224, 126, 126, 0.06); }
+
+.otoco-limit-side {
+  color: #7ecf7e;
+  font-weight: 600;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.otoco-stop-side {
+  color: #e07e7e;
+  font-weight: 600;
+  font-size: 0.72rem;
+  white-space: nowrap;
+}
+
+.otoco-limit-price { color: #7ecf7e; font-weight: 600; }
+.otoco-stop-price  { color: #e07e7e; font-weight: 600; }
+
+.otoco-pct-badge {
+  display: inline-block;
+  font-size: 0.68rem;
+  font-weight: 700;
+  border-radius: 3px;
+  padding: 1px 5px;
+  margin-left: 5px;
+}
+
+.otoco-pct-badge.up {
+  background: rgba(126, 207, 126, 0.18);
+  color: #7ecf7e;
+}
+
 .stock-quote-strip {
   background: rgba(255, 255, 255, 0.04);
   border: 1px solid rgba(255, 255, 255, 0.08);
@@ -2664,6 +2862,11 @@ html, body, #root {
   font-size: 0.85rem;
   font-weight: 600;
   color: var(--text-color, #ddd);
+}
+
+.otoco-pct-badge.down {
+  background: rgba(224, 126, 126, 0.18);
+  color: #e07e7e;
 }
 
 .spt-formula-display {

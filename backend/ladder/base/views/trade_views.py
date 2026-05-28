@@ -207,6 +207,16 @@ def stocks_delete_trade(request, order_id):
             transaction.sell_id = 0
             transaction.sell_placed = 0
             transaction.save()
+
+        elif side == 'OTOCO':
+            # Cancel the full OTOCO bracket order — wipe the transaction and reset the step
+            step_obj = Steps.objects.get(_id=step_id)
+            step_obj.status = 'OPEN'
+            step_obj.transaction = None
+            step_obj.save()
+
+            transaction = Transactions.objects.get(_id=transaction_id)
+            transaction.delete()
         
         return Response({
             'message': 'Order cancelled successfully',
