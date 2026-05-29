@@ -1,10 +1,61 @@
 import { useEffect, useRef, useState } from 'react'
 import {useDispatch, useSelector} from 'react-redux'
 import {useNavigate } from 'react-router-dom'
-import { listUsersLadders, createLadder } from '../actions/ladderActions'
+import { listUsersLadders, pollUsersLadders, createLadder } from '../actions/ladderActions'
 import Loader from '../components/Loader'
 import Message from '../components/Message'
 import Ladder from './Ladder'
+
+const ALERT_FADE_MS = 2000
+
+const ALERT_ICONS = [
+  { key: 'INSUFFICIENT_FUNDS_STOCKS', level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'Insufficient funds (stocks)' },
+  { key: 'INSUFFICIENT_FUNDS_CRYPTO', level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'Insufficient funds (crypto)' },
+  { key: 'NO_FUNDS_STOCKS',           level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'No funds (stocks)' },
+  { key: 'NO_FUNDS_CRYPTO',           level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'No funds (crypto)' },
+  { key: 'BUDGET_MAXED',              level: 'warning', iconType: 'fa',   icon: 'fa-dollar-sign',      label: 'Budget maxed' },
+  { key: 'BUFFER_52_WEEK',            level: 'warning', iconType: 'text', icon: '52',                  label: '52-week high buffer' },
+  { key: 'HOUR_24',                   level: 'warning', iconType: 'fa',   icon: 'fa-arrow-trend-down', label: 'Trending down (24h)' },
+]
+
+function AlertBadge({ alertStr }) {
+  const [displayed, setDisplayed] = useState(alertStr || '')
+  const [phase, setPhase] = useState(alertStr ? 'in' : 'hidden')
+  const timerRef = useRef(null)
+
+  useEffect(() => {
+    clearTimeout(timerRef.current)
+    if (alertStr) {
+      setDisplayed(alertStr)
+      setPhase('in')
+    } else if (displayed) {
+      setPhase('out')
+      timerRef.current = setTimeout(() => {
+        setDisplayed('')
+        setPhase('hidden')
+      }, ALERT_FADE_MS)
+    }
+    return () => clearTimeout(timerRef.current)
+  }, [alertStr]) // eslint-disable-line react-hooks/exhaustive-deps
+
+  if (phase === 'hidden' || !displayed) return null
+  const active = ALERT_ICONS.filter(a => displayed.includes(a.key))
+  if (!active.length) return null
+
+  return (
+    <span className={`lc-alert-dots lc-alert-dots--${phase}`}>
+      {active.map(a => (
+        <span
+          key={a.key}
+          className={`lc-alert-icon lc-alert-icon--${a.level}`}
+          title={a.label}
+        >
+          {a.iconType === 'fa' ? <i className={`fas ${a.icon}`} /> : a.icon}
+        </span>
+      ))}
+    </span>
+  )
+}
 
 function HomeScreen() {
   const dispatch = useDispatch()
@@ -27,12 +78,17 @@ function HomeScreen() {
     setSidebarOpen(false)
   }
   
-  // Fetch once per mount so sidebar is always fresh after navigation
+  // Fetch on mount, then poll every 60 seconds to keep sidebar data fresh
   useEffect(() => {
-    if (userInfo?.name && !hasFetchedRef.current) {
+    if (!userInfo?.name) return
+    if (!hasFetchedRef.current) {
       hasFetchedRef.current = true
       dispatch(listUsersLadders())
     }
+    const interval = setInterval(() => {
+      dispatch(pollUsersLadders())
+    }, 60000)
+    return () => clearInterval(interval)
   }, [dispatch, userInfo])
   
   // Set initial ladder when ladders first load; also select newest when list grows
@@ -163,35 +219,7 @@ function HomeScreen() {
               <span className={`lc-daily-dot lc-daily-dot--debt${dailyDebt === 0 ? ' lc-daily-dot--zero' : ''}`} />
               {fmtDaily(dailyDebt)}
             </span>
-            {ladder.alert && (() => {
-              const alert = ladder.alert
-              const ALERT_ICONS = [
-                { key: 'INSUFFICIENT_FUNDS_STOCKS', level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'Insufficient funds (stocks)' },
-                { key: 'INSUFFICIENT_FUNDS_CRYPTO', level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'Insufficient funds (crypto)' },
-                { key: 'NO_FUNDS_STOCKS',           level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'No funds (stocks)' },
-                { key: 'NO_FUNDS_CRYPTO',           level: 'danger',  iconType: 'fa',   icon: 'fa-building-columns', label: 'No funds (crypto)' },
-                { key: 'BUDGET_MAXED',              level: 'warning', iconType: 'fa',   icon: 'fa-dollar-sign',      label: 'Budget maxed' },
-                { key: 'BUFFER_52_WEEK',            level: 'warning', iconType: 'text', icon: '52',                  label: '52-week high buffer' },
-                { key: 'HOUR_24',                   level: 'warning', iconType: 'fa',   icon: 'fa-arrow-trend-down', label: 'Trending down (24h)' },
-              ]
-              const active = ALERT_ICONS.filter(a => alert.includes(a.key))
-              if (!active.length) return null
-              return (
-                <span className="lc-alert-dots">
-                  {active.map(a => (
-                    <span
-                      key={a.key}
-                      className={`lc-alert-icon lc-alert-icon--${a.level}`}
-                      title={a.label}
-                    >
-                      {a.iconType === 'fa'
-                        ? <i className={`fas ${a.icon}`} />
-                        : a.icon}
-                    </span>
-                  ))}
-                </span>
-              )
-            })()}
+            <AlertBadge alertStr={ladder.alert || ''} />
           </div>
         </div>
       )

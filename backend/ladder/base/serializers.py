@@ -342,23 +342,27 @@ class UserSerializer(serializers.ModelSerializer):
         } for step_id, profit in top_5]
     
     def get_daily_profit(self, obj):
-        """Sum daily_profit from the most recent snapshot of each user ladder"""
+        """Sum profit from closed transactions where sell_date is today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
         ladders = obj.ladders_set.all()
         total = 0.0
-        for ladder in ladders:
-            snapshot = ladder.snapshot_set.order_by('-_id').first()
-            if snapshot:
-                total += float(snapshot.daily_profit or 0)
+        for trans in Transactions.objects.filter(ladder__in=ladders, status='CLOSED').exclude(sell_date='').exclude(sell_date='0'):
+            dt = parse_timestamp(trans.sell_date)
+            if dt and dt.astimezone(eastern).date() == today:
+                total += float(trans.profit or 0)
         return round(total, 2)
 
     def get_daily_debt(self, obj):
-        """Sum daily_debt from the most recent snapshot of each user ladder"""
+        """Sum buy_total from transactions where buy was placed today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
         ladders = obj.ladders_set.all()
         total = 0.0
-        for ladder in ladders:
-            snapshot = ladder.snapshot_set.order_by('-_id').first()
-            if snapshot:
-                total += float(snapshot.daily_debt or 0)
+        for trans in Transactions.objects.filter(ladder__in=ladders).exclude(buy_placed='').exclude(buy_placed='0'):
+            dt = parse_timestamp(trans.buy_placed)
+            if dt and dt.astimezone(eastern).date() == today:
+                total += float(trans.buy_total or 0)
         return round(total, 2)
 
     def get_daily_buy_count(self, obj):
@@ -516,18 +520,26 @@ class LadderListSerializer(serializers.ModelSerializer):
         fields = ['_id', 'name', 'symbol', 'enable', 'alert', 'market', 'profit', 'budget', 'debt', 'last','trending','percent_change_24h', 'daily_profit', 'daily_debt', 'closed_daily_transaction_count', 'open_daily_transaction_count']
 
     def get_daily_profit(self, obj):
-        """Get daily_profit from the ladder's most recent snapshot"""
-        snapshot = obj.snapshot_set.order_by('-_id').first()
-        if snapshot:
-            return float(snapshot.daily_profit or 0)
-        return 0
+        """Sum profit from closed transactions where sell_date is today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        total = 0.0
+        for trans in obj.transactions_set.filter(status='CLOSED').exclude(sell_date='').exclude(sell_date='0'):
+            dt = parse_timestamp(trans.sell_date)
+            if dt and dt.astimezone(eastern).date() == today:
+                total += float(trans.profit or 0)
+        return round(total, 2)
 
     def get_daily_debt(self, obj):
-        """Get daily_debt from the ladder's most recent snapshot"""
-        snapshot = obj.snapshot_set.order_by('-_id').first()
-        if snapshot:
-            return float(snapshot.daily_debt or 0)
-        return 0
+        """Sum buy_total from transactions where buy was placed today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        total = 0.0
+        for trans in obj.transactions_set.exclude(buy_placed='').exclude(buy_placed='0'):
+            dt = parse_timestamp(trans.buy_placed)
+            if dt and dt.astimezone(eastern).date() == today:
+                total += float(trans.buy_total or 0)
+        return round(total, 2)
 
     def _get_eastern_today_date(self):
         """Get today's date in Eastern timezone"""
@@ -660,10 +672,13 @@ class LadderSerializer(serializers.ModelSerializer):
             
             # Filter for today's snapshot (Eastern time zone)
             snapshot = obj.snapshot_set.filter(date=today_eastern).latest('date')
-            serializer = SnapshotSerializer(snapshot, many=False)
-            return serializer.data
+            data = SnapshotSerializer(snapshot, many=False).data
         except Snapshot.DoesNotExist:
-            return None
+            data = {}
+        # Always inject live-computed daily values so the snapshot reflects today's trades
+        data['daily_profit'] = self.get_daily_profit(obj)
+        data['daily_debt'] = self.get_daily_debt(obj)
+        return data
     
     def get_avg_transaction_profit(self, obj):
         result = obj.transactions_set.filter(status='CLOSED').aggregate(avg=Avg('profit'))
@@ -791,14 +806,26 @@ class LadderSerializer(serializers.ModelSerializer):
         ]
 
     def get_daily_profit(self, obj):
-        """Get daily_profit from this ladder's most recent snapshot"""
-        snapshot = obj.snapshot_set.order_by('-_id').first()
-        return round(float(snapshot.daily_profit or 0), 2) if snapshot else 0.0
+        """Sum profit from closed transactions where sell_date is today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        total = 0.0
+        for trans in obj.transactions_set.filter(status='CLOSED').exclude(sell_date='').exclude(sell_date='0'):
+            dt = parse_timestamp(trans.sell_date)
+            if dt and dt.astimezone(eastern).date() == today:
+                total += float(trans.profit or 0)
+        return round(total, 2)
 
     def get_daily_debt(self, obj):
-        """Get daily_debt from this ladder's most recent snapshot"""
-        snapshot = obj.snapshot_set.order_by('-_id').first()
-        return round(float(snapshot.daily_debt or 0), 2) if snapshot else 0.0
+        """Sum buy_total from transactions where buy was placed today (Eastern time)"""
+        eastern = pytz.timezone('America/New_York')
+        today = datetime.now(eastern).date()
+        total = 0.0
+        for trans in obj.transactions_set.exclude(buy_placed='').exclude(buy_placed='0'):
+            dt = parse_timestamp(trans.buy_placed)
+            if dt and dt.astimezone(eastern).date() == today:
+                total += float(trans.buy_total or 0)
+        return round(total, 2)
 
     def get_daily_buy_count(self, obj):
         """Count buy orders placed today (Eastern time) for this ladder"""

@@ -2,7 +2,7 @@ import React, {useEffect, useState, useCallback, useMemo, useRef} from 'react'
 import { useDispatch, useSelector } from 'react-redux';
 import {Link, useParams, useNavigate} from 'react-router-dom'
 import { Row, Col, Table, Image, ListGroup, Card, Button, InputGroup, Form, Modal } from 'react-bootstrap'
-import { detailsLadder, deleteLadder, updateEnabledLadder, listUsersLadders, createLadder, bulkCreateLadders } from '../actions/ladderActions';
+import { detailsLadder, pollLadderDetails, deleteLadder, updateEnabledLadder, listUsersLadders, createLadder, bulkCreateLadders } from '../actions/ladderActions';
 import { tradeSuggestionGROK } from '../actions/tradeActions';
 import Loader from '../components/Loader'
 import Message from '../components/Message'
@@ -177,6 +177,16 @@ function Ladder({ladder_id}) {
       }
     }
   }, [dispatch, navigate, ladder_id, ladder?._id, loadingLadder, tradeCryptoDeleteSuccess, tradeStocksDeleteSuccess, tradeTransactionsDeleteSuccess])
+
+  // Poll the current ladder every 60 seconds to keep P&L in sync with sidebar
+  useEffect(() => {
+    const ladderId = Number(ladder_id)
+    if (!ladderId || isNaN(ladderId)) return
+    const interval = setInterval(() => {
+      dispatch(pollLadderDetails(ladderId))
+    }, 60000)
+    return () => clearInterval(interval)
+  }, [dispatch, ladder_id])
 
   // Separate effect for updating state from ladder data (no dispatch, just state updates)
   useEffect(() => {

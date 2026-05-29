@@ -105,6 +105,52 @@ export const detailsLadder = (id) => async (dispatch) => {
         })
     }
 }
+
+// Silent poll — no loading spinner, only updates store if volatile fields changed
+const _listFingerprint = (arr) => JSON.stringify(
+    (arr || []).map(l => ({
+        id: l._id,
+        dp: l.daily_profit,
+        dd: l.daily_debt,
+        p: l.profit,
+        d: l.debt,
+        last: l.last,
+        trending: l.trending,
+        pct: l.percent_change_24h,
+        enable: l.enable,
+        alert: l.alert,
+    }))
+)
+export const pollUsersLadders = () => async (dispatch, getState) => {
+    try {
+        const { userLogin: { userInfo } } = getState()
+        const config = { headers: { Authorization: `Bearer ${userInfo.token}` } }
+        const { data } = await axios.get('/api/ladders/user/list/', config)
+        const current = getState().ladderList.ladders
+        if (_listFingerprint(data) !== _listFingerprint(current)) {
+            dispatch({ type: LADDER_LIST_SUCCESS, payload: data })
+        }
+    } catch (_) { /* silently ignore poll errors */ }
+}
+
+export const pollLadderDetails = (id) => async (dispatch, getState) => {
+    try {
+        const { data } = await axios.get(`/api/ladders/${id}`)
+        const current = getState().ladderDetails.ladder
+        if (!current || current._id !== data._id) return
+        const fp = l => JSON.stringify({
+            dp: l.daily_profit,
+            dd: l.daily_debt,
+            p: l.profit,
+            d: l.debt,
+            last: l.last,
+            snap: l.snapshot,
+        })
+        if (fp(data) !== fp(current)) {
+            dispatch({ type: LADDER_DETAILS_SUCCESS, payload: data })
+        }
+    } catch (_) { /* silently ignore poll errors */ }
+}
 export const deleteLadder = (id) => async (dispatch, getState) => {
     try {
         dispatch({ type: LADDER_DELETE_REQUEST })

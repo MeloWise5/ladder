@@ -407,11 +407,26 @@ html, body, #root {
 .lc-daily-dot--debt   { background: var(--color-red); }
 .lc-daily-dot--zero   { background: var(--text-dim); }
 
+@keyframes lcAlertIn {
+  from { opacity: 0; transform: translateY(-5px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes lcAlertOut {
+  from { opacity: 1; transform: translateY(0); }
+  to   { opacity: 0; transform: translateY(-5px); }
+}
+
 .lc-alert-dots {
   display: flex;
   align-items: center;
   gap: 5px;
   margin-left: auto;
+}
+.lc-alert-dots--in {
+  animation: lcAlertIn 2s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+.lc-alert-dots--out {
+  animation: lcAlertOut 2s ease-in both;
 }
 
 .lc-alert-icon {
